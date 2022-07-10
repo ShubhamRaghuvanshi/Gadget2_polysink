@@ -4,4 +4,4 @@
 
 + The code can be used for simulating gravothermal collapse, fragmentation and consequent sink formation with polytropic equation of state. The following images show the fragmentation in primordial gas clouds for different degrees of rotation. The rotation parameter $\beta$ is the ratio of rotational energy to the gravitational energy of the cloud.      
 
-![alt text](https://github.com/ShubhamRaghuvanshi/Gadget2_polysink/img.png/200/200)
+![alt text](https://github.com/ShubhamRaghuvanshi/Gadget2_polysink/img.png)
