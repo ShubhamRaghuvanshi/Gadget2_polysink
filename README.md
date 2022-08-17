@@ -7,5 +7,5 @@
 ![alt text](img.png)
 
 
-Videos for all of the simulations can be found at the folliwing [link](https://www.youtube.com/watch?v=OAVzvZCopAI&list=PLEsVP16ISIIfigm7YLgIy4Cf14TGJ1UeE). Check out the file "report.pdf" in current repository for detailed report. 
+Videos for some simulations can be found at the folliwing [link](https://www.youtube.com/watch?v=OAVzvZCopAI&list=PLEsVP16ISIIfigm7YLgIy4Cf14TGJ1UeE). Check out the file "report.pdf" in current repository for detailed report. 
 
