@@ -4,9 +4,9 @@
 
 + The following images show the disk fragmentation in primordial gas clouds for different degrees of rotation.The rotation parameter $\beta$ is the ratio of rotational energy to the gravitational energy of the cloud. 
 
-+ Logarithmically scaled number density
+++ Logarithmically scaled number density
 ![alt text](sink_img.png)
-+ Temperature
+++ Temperature
 ![alt text](sink_tmp.png)
 
 
