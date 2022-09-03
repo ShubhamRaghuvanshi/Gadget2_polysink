@@ -40,22 +40,7 @@ GAMMA_MINUS1 =  (GAMMA-1);
 #endif
 
 #ifdef POLYTROPE
-//GAMMA          = (1.1276);
-//GAMMA           = (1.1326);
-//GAMMA        = (0.9829);
-//GAMMA          = (1.1706);
-//GAMMA          = (1.0639);
-//GAMMA          = (1.1328);
-//GAMMA        =  (0.9818);
-GAMMA            = (1.02635);
-//GAMMA    =  (1.0638);
-
-//GAMMA         = (0.6);
-//GAMMA           = (1.25);
-
-//GAMMA        =  (1.139);     /*!< index for isothermal gas */
-//GAMMA          =  (0.9806);
-//GAMMA        =  (1.027);
+GAMMA        =  (1.198);
 
 GAMMA_MINUS1 =  (GAMMA-1);
 CV           =  (3.0/2.0);

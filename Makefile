@@ -62,7 +62,7 @@ OPT   +=  -DOUTPUTPOTENTIAL
 #OPT   +=  -DMAKEGLASS=262144
 
 # sink particle options
-OPT += -DSINK
+#OPT += -DSINK
 #OPT += -DSINKBND
 
 #OPT +=  -DISOTHERM_EQS

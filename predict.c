@@ -184,7 +184,7 @@ void identify_doomed_particles(void)
   FLOAT seperation, relvel, relenergy, little_L, KeplerL2, sinkrad, sinkrad3;
   int num, startnode;
   int numsinks, numsinkstot;
-  int notestflag = 1;
+  int notestflag = 0;
 
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
@@ -285,7 +285,7 @@ void identify_doomed_particles(void)
           if(P[k].Type == 0 && P[k].Ti_endstep == All.Ti_Current && k < N_gas ){   
             for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
 	            seperation = sqrt(seperation);   
-              if(seperation <= 1.1*sinkrad ){
+              if(seperation <= 0.8*sinkrad ){
 								SphP[k].BNDPARTICLE =1;
 							}
 						}          
@@ -297,7 +297,7 @@ void identify_doomed_particles(void)
             seperation = sqrt(seperation);   /* r */
  
               
-            if(seperation < sinkrad/2.0){
+            if(seperation < sinkrad){
 
 
              for(relvel = 0,j = 0; j < 3; j++)
@@ -309,7 +309,7 @@ void identify_doomed_particles(void)
  							//if(verbose) 
           //    printf("Particle ID %d is within accretion radius of sink ID %d from %d           %f               %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,relenergy);
               
-            //  if(notestflag) relenergy = -1;  
+              if(notestflag) relenergy = -1;  
               if(relenergy < 0){
               
            //   	printf("Particle ID %d is bound to  sink ID %d from %d %f %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,sinkrad);

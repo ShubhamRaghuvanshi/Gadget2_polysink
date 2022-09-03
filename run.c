@@ -50,11 +50,12 @@ void run(void)
                                  * the particles that are to be advanced  
                                  *                                  *                                  */
 
-/*
 
-			double n_crit_cgs = 5e8, mh =  2.408544e-24;
+
+			double n_crit_cgs = 1e14, mh =  2.408544e-24;
 			double rho =  n_crit_cgs * mh/All.UnitDensity_in_cgs;           
    		if(All.NumCurrentTiStep >=2000){
+
 				for(int i=0; i<N_gas; i++){
 					if( SphP[i].Density > rho){ 
 					//	SphP[i].Density = rho;
@@ -63,7 +64,8 @@ void run(void)
 					}
 				}
    		}
-*/
+
+
 
 	//	 if(All.NumCurrentTiStep%1000 ==0 ){cutoff();}
 
@@ -122,7 +124,7 @@ void run(void)
 					sa = sqrt( P[i].GravAccel[0]*P[i].GravAccel[0] +  P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2]); 
 			 		L = sqrt(P[i].Spin[0]*P[i].Spin[0] + P[i].Spin[1]*P[i].Spin[1] + P[i].Spin[2]*P[i].Spin[2]) ; 
 			 	
-					fprintf(sinklist, "%d		%0.6f		%0.4f		%0.4f		%0.4f		%0.4f		%d		%0.4f		%0.4f		%0.4f\n", All.NumCurrentTiStep, All.Time, sr, sv, sa, P[i].Mass, P[i].NAccreted, P[i].Spin[2], L, TotMassInSinks );
+					fprintf(sinklist, "%d		%0.9f		%0.4f		%0.4f		%0.4f		%0.4f		%d		%0.4f		%0.4f		%0.4f\n", All.NumCurrentTiStep, All.Time, sr, sv, sa, P[i].Mass, P[i].NAccreted, P[i].Spin[2], L, AccNumAll*P[0].Mass );
 					fclose(sinklist);
 				}				
 			}
@@ -506,6 +508,7 @@ void every_timestep_stuff(void)
   MPI_Bcast(&rho_m, 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
   MPI_Bcast(&smthl , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
   }	
+  MPI_Barrier(MPI_COMM_WORLD);
 
 
   if(ThisTask == 0)
@@ -515,18 +518,18 @@ void every_timestep_stuff(void)
       if(All.ComovingIntegrationOn)
 	{
 	  z = 1.0 / (All.Time) - 1;
-	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, maxdens: %g, hsml: %g, TotNumPart: %d\n",
+	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n",
 		  All.NumCurrentTiStep, All.Time, z, All.TimeStep,
-		  log(All.Time) - log(All.Time - All.TimeStep), rho_n, smthl, All.TotNumPart);
-	  printf("\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, maxdens: %g, hsml: %g, TotNumPart: %d\n", All.NumCurrentTiStep,
-		 All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep), rho_n, smthl, All.TotNumPart);
+		  log(All.Time) - log(All.Time - All.TimeStep), rho_m*All.UnitDensity_in_cgs/mh, smthl, All.TotNumPart, GAMMA);
+	  printf("\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n", All.NumCurrentTiStep,
+		 All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep), rho_m*All.UnitDensity_in_cgs/mh, smthl, All.TotNumPart, GAMMA);
 	  fflush(FdInfo);
 	}
       else
 	{
-	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Systemstep: %g, maxdens: %g, hsml: %g, TotNumPart: %d\n", All.NumCurrentTiStep, All.Time,
-		  All.TimeStep, rho_n, smthl, All.TotNumPart);
-	  printf("\nBegin Step %d, Time: %g, Systemstep: %g, maxdens: %g, hsml: %g, 	TotNumPart: %d\n", All.NumCurrentTiStep, All.Time, All.TimeStep,  rho_n, smthl,All.TotNumPart);
+	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Systemstep: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n", All.NumCurrentTiStep, All.Time,
+		  All.TimeStep, rho_m*All.UnitDensity_in_cgs/mh, smthl, All.TotNumPart, GAMMA);
+	  printf("\nBegin Step %d, Time: %g, Systemstep: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep,  rho_m*All.UnitDensity_in_cgs/mh, smthl,All.TotNumPart, GAMMA);
 	  fflush(FdInfo);
 	}
 
@@ -585,7 +588,7 @@ void find_max_dens(int *thstsk, int *indx){
 		for(int i = 0; i < N_gas; i++){		 		
 			if(SphP[i].Density > max_glob){		
 					#ifdef SINK
-						if(SphP[i].DivVel <= 0 && P[i].Ti_endstep == All.Ti_Current){
+						if( P[i].Ti_endstep == All.Ti_Current && SphP[i].DivVel < 0){
 							max_glob = SphP[i].Density;	
 							*indx  = i;					
 						}
@@ -599,7 +602,7 @@ void find_max_dens(int *thstsk, int *indx){
 
 		for(int rank=1; rank<NTask; rank++){
 			MPI_Recv(&max_dens   , 1, MPI_DOUBLE, rank, 101, MPI_COMM_WORLD, MPI_STATUS_IGNORE);		
-			MPI_Recv(&tempindex  , 1, MPI_DOUBLE, rank, 101, MPI_COMM_WORLD, MPI_STATUS_IGNORE);		
+			MPI_Recv(&tempindex  , 1, MPI_INT, rank, 101, MPI_COMM_WORLD, MPI_STATUS_IGNORE);		
 
 //			printf("i recieved max_dens = %.5f from %d at %d\n", max_dens, rank, tempindex);
 			if( max_glob < max_dens ){
@@ -615,7 +618,7 @@ void find_max_dens(int *thstsk, int *indx){
 		for(int i = 0; i < N_gas; i++){
 			if(SphP[i].Density > max_dens){		
 					#ifdef SINK
-						if(SphP[i].DivVel <= 0  && P[i].Ti_endstep == All.Ti_Current ){
+						if( P[i].Ti_endstep == All.Ti_Current && SphP[i].DivVel < 0 ){
 							max_dens = SphP[i].Density;	
 							tempindex       = i;
 						}
@@ -701,7 +704,7 @@ void create_sink(){
 
 	find_max_dens(&thistask, &index);	
 
-	int   issink, sinkid, i_ngb, num, startnode;
+	int   issink=0, sinkid, i_ngb, num, startnode;
   FLOAT sp_pos[3], sp_vel[3], t_pos[3], t_vel[3]; 
 	FLOAT distsq, dist,  twohsml, hsml, u, Temp;
 
@@ -780,10 +783,10 @@ void create_sink(){
 		MPI_Bcast(&sp_pos , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
 		MPI_Bcast(&sp_vel , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
 		MPI_Bcast(&hsml   , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
-
+	
 
 //		twohsml = 0.00004;
-		twohsml = 2.0*hsml;
+		twohsml = 1.5*hsml;
 		startnode = All.MaxPart;
 		do{
 			num = ngb_treefind_variable(sp_pos, twohsml, &startnode);
@@ -848,6 +851,7 @@ void create_sink(){
     MPI_Barrier(MPI_COMM_WORLD);     
 	
 		if(ThisTask == thistask){
+			index = NumPart -1;
 			dposxtot += P[index].Pos[0] * P[index].Mass;
 			dposytot += P[index].Pos[1] * P[index].Mass;	
 			dposztot += P[index].Pos[2] * P[index].Mass;
@@ -874,6 +878,8 @@ void create_sink(){
 			P[index].Spin[0] += spinxtot;
 			P[index].Spin[1] += spinytot;
 			P[index].Spin[2] += spinztot;
+
+			P[index].NAccreted = round(P[index].Mass/P[0].Mass) ; 
 
 			P[index].Ti_endstep = All.Ti_Current;		
 		}
