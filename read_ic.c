@@ -146,32 +146,27 @@ void read_ic(char *fname)
 #endif
 
 #ifdef VARPOLYTROPE
-	float K =  (BOLTZMANN / PROTONMASS)  * (All.UnitMass_in_g / All.UnitEnergy_in_cgs);
-#endif 
+
+	  u_init *= (1.0 / ETA_MINUS1);
+
+	  if(All.InitGasTemp > 1.0e4)	/* assuming FULL ionization */
+	    molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
+	  else			/* assuming NEUTRAL GAS */
+	    molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);
+
+	  u_init /= molecular_weight;
+
+//printf(" Uinit is  %g from %d\n", u_init, ThisTask);	  
+#endif
+
+
 
 
 	  for(i = 0; i < N_gas; i++)
 	    {
-	    
-	 			#ifdef VARPOLYTROPE
-					SphP[i].CV = 3.0/2.0;
-					SphP[i].Eta_minus1 = 1.0/SphP[i].CV;
-          u_init =  (1.0 / SphP[i].Eta_minus1) * K * All.InitGasTemp;
-
-					if(All.InitGasTemp > 1.0e4)	/* assuming FULL ionization */
-						molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
-					else			/* assuming NEUTRAL GAS */
-						molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);
-
-					u_init /= molecular_weight;
-
- 
-          SphP[i].Gama = 0.725;
-          SphP[i].Gama_minus1 = SphP[i].Gama - 1.0;
-				#endif
-  
+	      
 	      if(SphP[i].Entropy == 0)
-					SphP[i].Entropy = u_init;
+		{SphP[i].Entropy = u_init;}
 					
  								
 		//			printf("%f\n", u_init);
@@ -186,8 +181,8 @@ void read_ic(char *fname)
     }
 
   for(i = 0; i < N_gas; i++){
-  }
     SphP[i].Entropy = dmax(All.MinEgySpec, SphP[i].Entropy);
+  }      
 
   MPI_Barrier(MPI_COMM_WORLD);
   if(ThisTask == 0)
@@ -259,12 +254,24 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 	SphP[offset + n].Density = *fp++;
       break;
 
-
     case IO_HSML:		/* SPH smoothing length */
       for(n = 0; n < pc; n++)
 	SphP[offset + n].Hsml = *fp++;
       break;
 
+#ifdef VARPOLYTROPE
+    case IO_GAMMA:
+      for(n = 0; n < pc; n++)
+	SphP[offset + n].Gamma = *fp++;
+      break;
+
+    case IO_ETA:
+      for(n = 0; n < pc; n++)
+	SphP[offset + n].Eta = *fp++;
+      break;
+
+
+#endif
 
 
 

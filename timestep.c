@@ -47,8 +47,10 @@ void advance_and_find_timesteps(void)
   if(All.ComovingIntegrationOn)
     {
       fac1 = 1 / (All.Time * All.Time);
+#ifndef VARPOLYTROPE                
       fac2 = 1 / pow(All.Time, 3 * GAMMA - 2);
       fac3 = pow(All.Time, 3 * (1 - GAMMA) / 2.0);
+#endif
       hubble_a = All.Omega0 / (All.Time * All.Time * All.Time)
 	+ (1 - All.Omega0 - All.OmegaLambda) / (All.Time * All.Time) + All.OmegaLambda;
 
@@ -297,11 +299,13 @@ void advance_and_find_timesteps(void)
 
 	      /* In case of cooling, we prevent that the entropy (and
 	         hence temperature decreases by more than a factor 0.5 */
+#ifndef VARPOLYTROPE
+         	if(SphP[i].DtEntropy * dt_entr > -0.5 * SphP[i].Entropy)
+		        SphP[i].Entropy += SphP[i].DtEntropy * dt_entr;
+	        else
+		        SphP[i].Entropy *= 0.5;
+#endif                
 
-	      if(SphP[i].DtEntropy * dt_entr > -0.5 * SphP[i].Entropy)
-		SphP[i].Entropy += SphP[i].DtEntropy * dt_entr;
-	      else
-		SphP[i].Entropy *= 0.5;
 
 	      if(All.MinEgySpec)
 		{
@@ -312,15 +316,22 @@ void advance_and_find_timesteps(void)
 		
 			#ifdef ADIABATIC
 			minentropy = All.MinEgySpec * GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);	
-			maxentropy = All.MaxEgySpec * ETA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);	
+			maxentropy = All.MaxEgySpec * GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);	
 			#endif
 		
 			#ifdef POLYTROPE
 			minentropy = All.MinEgySpec * ETA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);	
 			maxentropy = All.MaxEgySpec * ETA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);	
 			#endif 
+
+			#ifdef VARPOLYTROPE
+			minentropy =  All.MinEgySpec * (SphP[i].Eta - 1.0) / pow(SphP[i].Density * a3inv, (SphP[i].Gamma - 1.0) );	
+			maxentropy =  All.MaxEgySpec * (SphP[i].Eta - 1.0) / pow(SphP[i].Density * a3inv, (SphP[i].Gamma - 1.0) );	
+			#endif 
+
+
 		
-		  if(SphP[i].Entropy < minentropy)
+		  if(SphP[i].Entropy  < minentropy)
 		    {
 		      SphP[i].Entropy = minentropy;
 		      SphP[i].DtEntropy = 0;
@@ -340,13 +351,12 @@ void advance_and_find_timesteps(void)
 	         predicted temperatures. The maximum timespan over
 	         which prediction can occur is ti_step/2, i.e. from
 	         the middle to the end of the current step */
-
+#ifndef VARPOLYTROPE
 	      dt_entr = ti_step / 2 * All.Timebase_interval;
 	      if(SphP[i].Entropy + SphP[i].DtEntropy * dt_entr < 0.5 * SphP[i].Entropy)
 		SphP[i].DtEntropy = -0.5 * SphP[i].Entropy / dt_entr;
-	    }
-
-
+#endif
+		}
 	  /* if tree is not going to be reconstructed, kick parent nodes dynamically.
 	   */
 	  if(All.NumForcesSinceLastDomainDecomp < All.TotNumPart * All.TreeDomainUpdateFrequency)
@@ -472,7 +482,7 @@ int get_timestep(int p,		/*!< particle index */
 	
 		#ifdef VARPOLYTROPE
 	 	if(All.ComovingIntegrationOn)
-	 		fac2 =  1 / pow(All.Time, 3 * SphP[p].Gama - 2);	
+	 		fac2 =  1 / pow(All.Time, 3 * SphP[p].Gamma - 2);	
 	 	else 
 	 		fac2=1;	
 	 	#endif 
@@ -515,21 +525,19 @@ int get_timestep(int p,		/*!< particle index */
 
   if(P[p].Type == 0)
     {
-    	
-    	#ifndef VARPOLYTROPE
-      csnd = sqrt(GAMMA * SphP[p].Pressure / SphP[p].Density);
-			#else 
-			csnd = sqrt( SphP[p].Gama * SphP[p].Pressure / SphP[p].Density);
-			#endif 
 
-			#ifdef VARPOLYTROPE
-			if(All.ComovingIntegrationOn)
-				fac3 = pow(All.Time, 3 * (1 - SphP[p].Gama) / 2.0);
-			else
-				fac3 =1;	
-			#endif 
-  
-      if(All.ComovingIntegrationOn)
+#ifdef VARPOLYTROPE
+      csnd = sqrt(SphP[p].Gamma * SphP[p].Pressure / SphP[p].Density);
+#else
+      csnd = sqrt(GAMMA * SphP[p].Pressure / SphP[p].Density);
+#endif
+
+#ifdef VARPOLYTROPE
+      if(All.ComovingIntegrationOn) 
+        fac3 = pow(All.Time, 3 * (1 - SphP[p].Gamma) / 2.0);
+#endif
+
+        if(All.ComovingIntegrationOn)
 	dt_courant = 2 * All.CourantFac * All.Time * SphP[p].Hsml / (fac3 * SphP[p].MaxSignalVel);
       else
 	dt_courant = 2 * All.CourantFac * SphP[p].Hsml / SphP[p].MaxSignalVel;

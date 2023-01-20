@@ -152,7 +152,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     {
       a3inv = 1 / (All.Time * All.Time * All.Time);
       fac1 = 1 / (All.Time * All.Time);
-      fac2 = 1 / pow(All.Time, 3 * GAMMA - 2);
+        #ifdef VARPOLYTROPE      
+        fac2 = 1.0;
+        #else 
+        fac2 = 1 / pow(All.Time, 3 * GAMMA - 2);
+        #endif 
     }
   else
     a3inv = fac1 = fac2 = 1;
@@ -269,31 +273,40 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-#ifdef ISOTHERM_EQS
-	    *fp++ = SphP[pindex].Entropy;
-#endif 	    
-	    
-#ifdef ADIABATIC
-			tempTemp = SphP[pindex].Entropy / GAMMA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
-			if( tempTemp > All.MaxEgySpec )
-				tempTemp = All.MaxEgySpec;
-			else if( tempTemp < All.MinEgySpec )
-				tempTemp = All.MinEgySpec;
-	    *fp++ = tempTemp;
-#endif
+                #ifdef ISOTHERM_EQS
+                *fp++ = SphP[pindex].Entropy;
+                #endif 	    
 
-#ifdef POLYTROPE
+                #ifdef ADIABATIC
+                tempTemp = SphP[pindex].Entropy / GAMMA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
+                if( tempTemp > All.MaxEgySpec )
+	                tempTemp = All.MaxEgySpec;
+                else if( tempTemp < All.MinEgySpec )
+	                tempTemp = All.MinEgySpec;
+                *fp++ = tempTemp;
+                #endif
 
-			tempTemp = SphP[pindex].Entropy / ETA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
-			if( tempTemp > All.MaxEgySpec )
-				tempTemp = All.MaxEgySpec;
-			else if( tempTemp < All.MinEgySpec )
-				tempTemp = All.MinEgySpec;
-	    *fp++ = tempTemp;
-#endif
+                #ifdef POLYTROPE
 
-	    n++;
-	  }
+                tempTemp = SphP[pindex].Entropy / ETA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
+                if( tempTemp > All.MaxEgySpec )
+	                tempTemp = All.MaxEgySpec;
+                else if( tempTemp < All.MinEgySpec )
+	                tempTemp = All.MinEgySpec;
+                *fp++ = tempTemp;
+                #endif
+
+                #ifdef VARPOLYTROPE
+                tempTemp = SphP[pindex].Entropy / (SphP[pindex].Eta - 1.0) * pow(SphP[pindex].Density * a3inv, (SphP[pindex].Gamma - 1.0) );
+                if( tempTemp > All.MaxEgySpec )
+	                tempTemp = All.MaxEgySpec;
+                else if( tempTemp < All.MinEgySpec )
+	                tempTemp = All.MinEgySpec;
+                *fp++ = tempTemp;
+                #endif
+
+                n++;
+        }
       break;
 		
 
@@ -301,17 +314,45 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	  	#ifdef POLYTROPE
 
-				tempTemp = SphP[pindex].Entropy / ETA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
-				if( tempTemp > All.MaxEgySpec )
-					tempTemp = All.MaxEgySpec;
-				else if( tempTemp < All.MinEgySpec )
-					tempTemp = All.MinEgySpec;
-			  	
-				*fp++ = (2.0/3.0)*tempTemp*1.2195122* All.UnitEnergy_in_cgs*PROTONMASS/(BOLTZMANN*All.UnitMass_in_g);		  	
+	  	#ifdef ADIABATIC
+                TempFac =   meanweight * All.UnitEnergy_in_cgs * PROTONMASS/(BOLTZMANN* All.UnitMass_in_g );
+                tempTemp  = SphP[pindex].Entropy * pow(SphP[pindex].Density, GAMMA_MINUS1  ) ;
+                tempTemp  = tempTemp*TempFac;                
+		//tempTemp = SphP[pindex].Entropy / GAMMA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
+		if( tempTemp > All.MaxGasTemp )
+			tempTemp = All.MaxGasTemp;
+		else if( tempTemp < All.MinGasTemp )
+			tempTemp = All.MinGasTemp;
+		*fp++ = tempTemp;		  	
 	  	#endif 
-	  			
+
+
+	  	#ifdef POLYTROPE
+                TempFac   = meanweight * All.UnitEnergy_in_cgs * PROTONMASS/(BOLTZMANN* All.UnitMass_in_g );
+                tempTemp  = SphP[pindex].Entropy * pow(SphP[pindex].Density, GAMMA_MINUS1  ) ;
+                tempTemp  = tempTemp*TempFac;                
+		//tempTemp = SphP[pindex].Entropy / GAMMA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
+		if( tempTemp > All.MaxGasTemp )
+			tempTemp = All.MaxGasTemp;
+		else if( tempTemp < All.MinGasTemp )
+			tempTemp = All.MinGasTemp;
+		*fp++ = tempTemp;		  	
+	  	#endif 
+
+	  	#ifdef VARPOLYTROPE
+                TempFac   = meanweight * All.UnitEnergy_in_cgs * PROTONMASS/(BOLTZMANN* All.UnitMass_in_g );
+                tempTemp  = SphP[pindex].Entropy * pow(SphP[pindex].Density, (SphP[pindex].Gamma - 1.0)  ) ;
+                tempTemp  = tempTemp*TempFac;                
+		//tempTemp = SphP[pindex].Entropy / GAMMA_MINUS1 * pow(SphP[pindex].Density * a3inv, GAMMA_MINUS1);
+		if( tempTemp > All.MaxGasTemp )
+			tempTemp = All.MaxGasTemp;
+		else if( tempTemp < All.MinGasTemp )
+			tempTemp = All.MinGasTemp;
+		*fp++ = tempTemp;		  	
+	  	#endif 
+
+
 	  	 n++;
 	  }
       break;
@@ -335,6 +376,14 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  }
       break;
 
+    case IO_SDEN:		/* density */
+      for(n = 0; n < pc; pindex++)
+	if(P[pindex].Type == type)
+	  {
+	    *fp++ = SphP[pindex].Density*SphP[pindex].Hsml/3.0;
+	    n++;
+	  }
+      break;
 
 
 
@@ -383,7 +432,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	    	
 	    	#ifdef VARPOLYTROPE
 				if(All.ComovingIntegrationOn){
-	    		fac2 = 1 / pow(All.Time, 3 * SphP[pinex].Gama - 2); 				
+	    		fac2 = 1 / pow(All.Time, 3 * SphP[pindex].Gamma - 2); 				
 				}				
 				else{
 					fac2 = 1;
@@ -426,7 +475,30 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
       break;
 
+#ifdef VARPOLYTROPE
+    case IO_GAMMA:
+      for(n = 0; n < pc; pindex++)
+	if(P[pindex].Type == type)
+	  {
+	    *fp++ = SphP[pindex].Gamma;
+	    n++;
+	  }
+      break;
+
+    case IO_ETA:
+      for(n = 0; n < pc; pindex++)
+	if(P[pindex].Type == type)
+	  {
+	    *fp++ = SphP[pindex].Eta;
+	    n++;
+	  }
+      break;
+#endif
+
+
     }
+
+
 
   *startindex = pindex;
 }
@@ -463,11 +535,18 @@ int get_bytes_per_blockelement(enum iofields blocknr)
     case IO_TEMP:
     case IO_RHO:
     case IO_NRHO:
+    case IO_SDEN:
     case IO_PRES:
     case IO_HSML:
     case IO_POT:
     case IO_DTENTR:
     case IO_TSTP:
+
+#ifdef VARPOLYTROPE
+    case IO_GAMMA:
+    case IO_ETA:
+#endif
+
       bytes_per_blockelement = sizeof(float);
       break;
     }
@@ -525,11 +604,17 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_TEMP:
     case IO_RHO:
     case IO_NRHO:
+    case IO_SDEN:    
     case IO_PRES:
     case IO_HSML:
     case IO_POT:
     case IO_DTENTR:
     case IO_TSTP:
+#ifdef VARPOLYTROPE
+    case IO_GAMMA:
+    case IO_ETA:
+#endif
+
       values = 1;
       break;
     }
@@ -593,9 +678,15 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_TEMP:
     case IO_RHO:
     case IO_NRHO:
+    case IO_SDEN:
     case IO_PRES:
     case IO_HSML:
     case IO_DTENTR:
+#ifdef VARPOLYTROPE
+    case IO_GAMMA:
+    case IO_ETA:
+#endif
+
       for(i = 1; i < 6; i++)
 	typelist[i] = 0;
       return ngas;
@@ -678,10 +769,16 @@ void fill_Tab_IO_Labels(void)
       case IO_NRHO:
 	strncpy(Tab_IO_Labels[IO_NRHO], "NRHO ", 4);
 	break;
-			case IO_PRES:	
+
+      case IO_SDEN:
+	strncpy(Tab_IO_Labels[IO_SDEN], "SDEN ", 4);
+	break;
+
+     case IO_PRES:	
 	strncpy(Tab_IO_Labels[IO_PRES], "PRES ", 4);
 	break;
-      case IO_HSML:
+ 
+     case IO_HSML:
 	strncpy(Tab_IO_Labels[IO_HSML], "HSML", 4);
 	break;
       case IO_POT:
@@ -695,6 +792,19 @@ void fill_Tab_IO_Labels(void)
 	break;
       case IO_TSTP:
 	strncpy(Tab_IO_Labels[IO_TSTP], "TSTP", 4);
+
+#ifdef VARPOLYTROPE
+      case IO_GAMMA:
+	strncpy(Tab_IO_Labels[IO_GAMMA], "GAMM", 4);
+	break;
+
+      case IO_ETA:
+	strncpy(Tab_IO_Labels[IO_GAMMA], "ETA", 4);
+	break;
+
+
+#endif
+
 	break;
       }
 }
@@ -734,6 +844,11 @@ void get_dataset_name(enum iofields blocknr, char *buf)
      case IO_NRHO:
       strcpy(buf, "NDensity");
       break;     
+
+     case IO_SDEN:
+      strcpy(buf, "SurDens");
+      break;     
+
     case IO_PRES:
       strcpy(buf, "Pressure");
       break;
@@ -752,6 +867,19 @@ void get_dataset_name(enum iofields blocknr, char *buf)
     case IO_TSTP:
       strcpy(buf, "TimeStep");
       break;
+
+#ifdef VARPOLYTROPE
+    case IO_GAMMA:
+      strcpy(buf, "Polytropic index");
+      break;
+
+    case IO_ETA:
+      strcpy(buf, "Adiabatic index");
+      break;
+
+#endif
+
+
     }
 }
 

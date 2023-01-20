@@ -62,6 +62,11 @@ int main(int argc, char **argv)
 
   t0 = second();
 
+#ifdef SINK
+SinkFlag = 0 ;
+#endif 
+
+
   begrun();			/* set-up run  */
 
   t1 = second();

@@ -67,8 +67,8 @@ OPT   +=  -DOUTPUTPOTENTIAL
 
 #OPT +=  -DISOTHERM_EQS
 #OPT += -DADIABATIC
-OPT += -DPOLYTROPE
-#OPT += -DVARPOLYTROPE
+#OPT += -DPOLYTROPE
+OPT += -DVARPOLYTROPE
 
 #----------------------------------------------------------------------
 # Here, select compile environment for the target machine. This may need 

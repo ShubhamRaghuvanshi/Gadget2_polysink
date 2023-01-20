@@ -122,10 +122,12 @@ typedef  long long  peanokey;    /*!< defines the variable type used for Peano-H
 
 // #define CUTOFF_RADIUS 3
 
-extern double GAMMA, GAMMA_MINUS1 ;
-#ifdef POLYTROPE
-extern double CV,ETA_MINUS1; 
-#endif
+extern FLOAT GAMMA, GAMMA_MINUS1 ;
+extern FLOAT CV,ETA_MINUS1; 
+extern FLOAT TempFac;
+extern FLOAT meanweight;
+extern float temp_gamma, temp_nrho, temp_T, temp_smthl;
+extern int TempTask, TempIndex;
 
 extern FLOAT rho_n;
 extern FLOAT smthl;
@@ -143,9 +145,18 @@ extern int AccNum;
 extern int AccNumAll;
 extern int N_accrete;
 extern int N_sink;
+extern int SinkFlag;
 extern FLOAT TotMassInSinks;
-extern FLOAT TempFac;
 #endif 
+
+
+#ifdef VARPOLYTROPE
+extern float gamma1;
+extern float eta1;
+#endif
+
+
+
 
 extern long long Ntype[6];      /*!< total number of particles of each type */
 extern int NtypeLocal[6];       /*!< local number of particles of each type */
@@ -516,6 +527,7 @@ extern struct global_data_all_processes
 		double CriticalTemperature;
 		int    CriticalNumstep;
 		double CutoffRadius;
+                int FixedTimestep;
 //SINK*
 
 }
@@ -601,10 +613,8 @@ extern struct sph_particle_data
 
 
 	#ifdef VARPOLYTROPE
-		double Gama;
-		double Gama_minus1;
-		double CV;
-		double Eta_minus1;
+	FLOAT Gamma;
+    FLOAT Eta;
 	#endif 
 
 }
@@ -692,7 +702,7 @@ extern struct io_header
  header;                               /*!< holds header for snapshot files */
 
 
-#define IO_NBLOCKS 14   /*!< total number of defined information blocks for snapshot files.
+#define IO_NBLOCKS 17   /*!< total number of defined information blocks for snapshot files.
                              Must be equal to the number of entries in "enum iofields" */
 
 enum iofields           /*!< this enumeration lists the defined output blocks in snapshot files. Not all of them need to be present. */
@@ -705,12 +715,17 @@ enum iofields           /*!< this enumeration lists the defined output blocks in
   IO_TEMP,
   IO_RHO,
   IO_NRHO,
+  IO_SDEN,
   IO_PRES,
   IO_HSML,
   IO_POT,
   IO_ACCEL,
   IO_DTENTR,
   IO_TSTP,
+  #ifdef VARPOLYTROPE
+  IO_GAMMA,
+  IO_ETA,
+  #endif 
 };
 
 
@@ -818,13 +833,15 @@ extern struct hydrodata_in
   int   Task;
   int   Index;
 
-	#ifdef SINK
-		int BNDPARTICLE;
-	#endif 
+  #ifdef SINK
+  int BNDPARTICLE;
+  int AccretionTarget;
+  #endif 
 
-	#ifdef VARPOLYTROPE
-		FLOAT Gama;
-	#endif 
+  #ifdef VARPOLYTROPE
+  FLOAT Gamma;
+  FLOAT Eta;
+  #endif 
 
 }
  *HydroDataIn,                  /*!< holds particle data for SPH hydro-force computation to be exported to other processors */

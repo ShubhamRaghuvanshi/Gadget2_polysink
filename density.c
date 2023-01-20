@@ -304,8 +304,12 @@ void density(void)
 
 		dt_entr = (All.Ti_Current - (P[i].Ti_begstep + P[i].Ti_endstep) / 2) * All.Timebase_interval;
 
+                #ifdef VARPOLYTROPE
+		SphP[i].Pressure = SphP[i].Entropy * pow(SphP[i].Density, SphP[i].Gamma);
+                #else /* CHEMCOOL */
 		SphP[i].Pressure =
 		  (SphP[i].Entropy + SphP[i].DtEntropy * dt_entr) * pow(SphP[i].Density, GAMMA) ;
+                #endif
 
 	      }
 

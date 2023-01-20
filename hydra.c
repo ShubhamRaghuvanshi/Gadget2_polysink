@@ -85,11 +85,11 @@ void hydro_force(void)
       hubble_a = All.Hubble * sqrt(hubble_a);
       hubble_a2 = All.Time * All.Time * hubble_a;
 
+#ifndef VARPOLYTROPE
       fac_mu = pow(All.Time, 3 * (GAMMA - 1) / 2) / All.Time;
-
       fac_egy = pow(All.Time, 3 * (GAMMA - 1));
-
       fac_vsic_fix = hubble_a * pow(All.Time, 3 * GAMMA_MINUS1);
+#endif
 
       a3inv = 1 / (All.Time * All.Time * All.Time);
       atime = All.Time;
@@ -155,31 +155,31 @@ void hydro_force(void)
 		    HydroDataIn[nexport].Pressure = SphP[i].Pressure;
 		    HydroDataIn[nexport].Timestep = P[i].Ti_endstep - P[i].Ti_begstep;
 			
-				#ifdef SINK
-						    HydroDataIn[nexport].BNDPARTICLE = SphP[i].BNDPARTICLE;	
-				#endif 
+        		#ifdef SINK
+	                HydroDataIn[nexport].BNDPARTICLE = SphP[i].BNDPARTICLE;
+	                HydroDataIn[nexport].AccretionTarget = SphP[i].AccretionTarget;	
+	        	#endif 
 
+                        #ifdef VARPOLYTROPE
+                        HydroDataIn[nexport].Gamma    = SphP[i].Gamma;
+                        HydroDataIn[nexport].Eta      = SphP[i].Eta;
+                        #endif         
 
 		    /* calculation of F1 */
-				#ifndef VARPOLYTROPE
+#ifdef VARPOLYTROPE
+		    soundspeed_i = sqrt(SphP[i].Gamma * SphP[i].Pressure / SphP[i].Density);
+                    if(All.ComovingIntegrationOn)
+                      {
+                        fac_mu  = pow(All.Time, 3 * (SphP[i].Gamma - 1.0) / 2) / All.Time;
+		      }
+#else
 		    soundspeed_i = sqrt(GAMMA * SphP[i].Pressure / SphP[i].Density);
-		    HydroDataIn[nexport].F1 = fabs(SphP[i].DivVel) /
-		      (fabs(SphP[i].DivVel) + SphP[i].CurlVel +
-		       0.0001 * soundspeed_i / SphP[i].Hsml / fac_mu);
-				#else
-				if(All.ComovingIntegrationOn)
-					fac_mu = pow(All.Time, 3 * (SphP[i].Gama - 1) / 2) / All.Time; 	
-				else 	
-					fac_mu =1;
-				soundspeed_i = sqrt(SphP[i].Gama * SphP[i].Pressure / SphP[i].Density);				 
-		    HydroDataIn[nexport].F1 = fabs(SphP[i].DivVel) /
-		      (fabs(SphP[i].DivVel) + SphP[i].CurlVel +
-		       0.0001 * soundspeed_i / SphP[i].Hsml / fac_mu);
-				#endif 	
-					
-					
-					
+#endif
 
+		    HydroDataIn[nexport].F1 = fabs(SphP[i].DivVel) /
+		      (fabs(SphP[i].DivVel) + SphP[i].CurlVel +
+		       0.0001 * soundspeed_i / SphP[i].Hsml / fac_mu);
+			
 		    HydroDataIn[nexport].Index = i;
 		    HydroDataIn[nexport].Task = j;
 		    nexport++;
@@ -330,7 +330,6 @@ void hydro_force(void)
   free(noffset);
 
 	
-
   /* do final operations on results */
   tstart = second();
 
@@ -343,25 +342,18 @@ void hydro_force(void)
       	#endif 
       
       	#ifdef ADIABATIC
-				SphP[i].DtEntropy *= GAMMA_MINUS1 / (hubble_a2 * pow(SphP[i].Density, GAMMA_MINUS1));      	
+	SphP[i].DtEntropy *= GAMMA_MINUS1 / (hubble_a2 * pow(SphP[i].Density, GAMMA_MINUS1));      	
       	#endif 
       
-			  #ifdef POLYTROPE
-				SphP[i].DtEntropy *= GAMMA_MINUS1 / (hubble_a2 * pow(SphP[i].Density, GAMMA_MINUS1));      	
+	#ifdef POLYTROPE
+	SphP[i].DtEntropy *= ETA_MINUS1 / (hubble_a2 * pow(SphP[i].Density, GAMMA_MINUS1));      	
       	#endif 
 	
-			  #ifdef VARPOLYTROPE
-				SphP[i].DtEntropy *= SphP[i].Gama_minus1 / (hubble_a2 * pow(SphP[i].Density, SphP[i].Gama_minus1));      	
+        #ifdef VARPOLYTROPE
+	//SphP[i].DtEntropy *= (SphP[i].Eta - 1.0) / (hubble_a2 * pow(SphP[i].Density, (SphP[i].Gamma - 1.0) ) ); 	
+		SphP[i].DtEntropy = 0;
       	#endif 
 				
-				#ifdef SPH_BND_PARTICLES
-				if(P[i].ID == 0)
-					{
-						SphP[i].DtEntropy = 0;
-						for(k = 0; k < 3; k++)
-							SphP[i].HydroAccel[k] = 0;
-					}
-				#endif 
       }
 
   tend = second();
@@ -415,22 +407,20 @@ void hydro_evaluate(int target, int mode)
       pressure = SphP[target].Pressure;
       timestep = P[target].Ti_endstep - P[target].Ti_begstep;
 
-			#ifndef VARPOLYTROPE
-      soundspeed_i = sqrt(GAMMA * pressure / rho);
-      f1 =	fabs(SphP[target].DivVel) /
-						(fabs(SphP[target].DivVel) + SphP[target].CurlVel +
-						0.0001 * soundspeed_i / SphP[target].Hsml / fac_mu);
-			#else
-			if(All.ComovingIntegrationOn)
-				fac_mu = pow(All.Time, 3 * (SphP[target].Gama - 1) / 2) / All.Time; 	
-			else 	
-				fac_mu =1;
-			soundspeed_i = sqrt(SphP[target].Gama * pressure / rho);
-      f1 =	fabs(SphP[target].DivVel) /
-						(fabs(SphP[target].DivVel) + SphP[target].CurlVel +
-						0.0001 * soundspeed_i / SphP[target].Hsml / fac_mu);
-			#endif 	
-    }
+        #ifdef VARPOLYTROPE
+        soundspeed_i = sqrt(SphP[target].Gamma * pressure / rho);
+        if(All.ComovingIntegrationOn)
+        {
+          fac_mu  = pow(All.Time, 3 * (SphP[target].Gamma - 1.0) / 2) / All.Time;
+				}
+        #else
+        soundspeed_i = sqrt(GAMMA * pressure / rho);
+        #endif
+        f1 = fabs(SphP[target].DivVel) /
+	(fabs(SphP[target].DivVel) + SphP[target].CurlVel +
+	 0.0001 * soundspeed_i / SphP[target].Hsml / fac_mu);
+
+  }
   else
     {
       pos = HydroDataGet[target].Pos;
@@ -442,11 +432,12 @@ void hydro_evaluate(int target, int mode)
       pressure = HydroDataGet[target].Pressure;
       timestep = HydroDataGet[target].Timestep;
 
-			#ifndef VARPOLYTROPE
-      soundspeed_i = sqrt(GAMMA * pressure / rho);
-			#else 
-			soundspeed_i = sqrt(HydroDataGet[target].Gama * pressure / rho);
-			#endif 
+        #ifdef VARPOLYTROPE
+        soundspeed_i = sqrt(HydroDataGet[target].Gamma * pressure / rho);
+        #else
+        soundspeed_i = sqrt(GAMMA * pressure / rho);
+        #endif
+
 
       f1 = HydroDataGet[target].F1;
     }
@@ -518,8 +509,16 @@ void hydro_evaluate(int target, int mode)
 		{
 		  p_over_rho2_j = (SphP[j].Pressure - All.ExternalPressure )/ (SphP[j].Density * SphP[j].Density);
 
+                  #ifdef VARPOLYTROPE
+		  soundspeed_j = sqrt(SphP[j].Gamma * SphP[j].Pressure/ SphP[j].Density   );
+                  #else
+		  soundspeed_j = sqrt(GAMMA * SphP[j].Pressure/ SphP[j].Density   );
+                  #endif
+
+
+
 	//	  soundspeed_j = sqrt(GAMMA * p_over_rho2_j * SphP[j].Density);
- 		  soundspeed_j = sqrt(GAMMA * SphP[j].Pressure/ SphP[j].Density   );
+ 	//	  soundspeed_j = sqrt(GAMMA * SphP[j].Pressure/ SphP[j].Density   );
 
 
 
@@ -578,10 +577,10 @@ void hydro_evaluate(int target, int mode)
 		    {
 		    
 		    	#ifdef  VARPOLYTROPE
-					if(All.ComovingIntegrationOn)
-						fac_mu = pow(All.Time, 3 * (SphP[j].Gama - 1) / 2) / All.Time;
-					else 
-						fac_mu =1; 				    	
+			if(All.ComovingIntegrationOn)
+			        fac_mu = pow(All.Time, 3 * (SphP[j].Gamma - 1.0) / 2) / All.Time;
+			else 
+			fac_mu =1; 				    	
 		    	#endif  	   	
 		      mu_ij = fac_mu * vdotr2 / r;	/* note: this is negative! */
 					
@@ -604,13 +603,13 @@ void hydro_evaluate(int target, int mode)
 		      dt = imax(timestep, (P[j].Ti_endstep - P[j].Ti_begstep)) * All.Timebase_interval;
 		      if(dt > 0 && (dwk_i + dwk_j) < 0)
 			{
-				#ifdef VARPOLYTROPE
-					if(All.ComovingIntegrationOn){
-						fac_vsic_fix = hubble_a * pow(All.Time, 3 * SphP[j].Gama_minus1);
-					}	
-					else
-						fac_vsic_fix =1; 				
-				#endif 
+                        #ifdef VARPOLYTROPE
+                        if(All.ComovingIntegrationOn)
+                          {
+                            fac_vsic_fix = hubble_a * pow(All.Time, 3 * (SphP[j].Gamma - 1.0));
+		          } 
+                        #endif /* CHEMCOOL */
+
 			  visc = dmin(visc, 0.5 * fac_vsic_fix * vdotr2 /
 				      (0.5 * (mass + P[j].Mass) * (dwk_i + dwk_j) * r * dt));				      
 			}

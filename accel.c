@@ -70,7 +70,6 @@ void compute_accelerations(int mode)
       tend = second();
       All.CPU_Hydro += timediff(tstart, tend);
 
-
       tstart = second();
       force_update_hmax();      /* tell the tree nodes the new SPH smoothing length such that they are guaranteed to hold the correct max(Hsml) */
       tend = second();
@@ -86,16 +85,15 @@ void compute_accelerations(int mode)
       tstart = second();
       hydro_force();		/* adds hydrodynamical accelerations and computes viscous entropy injection  */
   
- 				#ifdef SINK
-					for(int i=0; i<N_gas; i++){					
-						if(P[i].Type == 0 && SphP[i].BNDPARTICLE == 1){
-								SphP[i].DtEntropy = 0;
-							 // SphP[i].Entropy = All.MaxEgySpec * ETA_MINUS1 / pow(SphP[i].Density, GAMMA_MINUS1);
-						for(int k = 0; k < 3; k++)
-							SphP[i].HydroAccel[k] = 0;					
-						} 
-					}
-				#endif 
+	#ifdef SINK
+		for(int i=0; i<N_gas; i++){					
+			if(P[i].Type == 0 && SphP[i].BNDPARTICLE == 1){
+			SphP[i].DtEntropy = 0;	
+			for(int k = 0; k < 3; k++)
+				SphP[i].HydroAccel[k] = 0;					
+			} 
+		}
+	#endif 
 
      
       

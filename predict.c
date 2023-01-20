@@ -70,8 +70,12 @@ void move_particles(int time0, int time1)
 	    SphP[i].Hsml = All.MinGasHsml;
 
 	  dt_entr = (time1 - (P[i].Ti_begstep + P[i].Ti_endstep) / 2) * All.Timebase_interval;
-	
+
+          #ifdef VARPOLYTROPE      	
+          SphP[i].Pressure =  SphP[i].Entropy * pow(SphP[i].Density, SphP[i].Gamma) ;
+          #else 
 	  SphP[i].Pressure = (SphP[i].Entropy + SphP[i].DtEntropy * dt_entr) * pow(SphP[i].Density, GAMMA) ;
+          #endif
 
 	}
     }
@@ -176,6 +180,7 @@ void cutoff(){
 
 void identify_doomed_particles(void)
 {
+
 #ifdef CUTOFF_RADIUS
   int pindex;
   FLOAT EffectiveCutoff;
@@ -248,7 +253,7 @@ void identify_doomed_particles(void)
     
    // printf("ThisTask: %d, sinknum: %d, sinkid: %d\n\n", ThisTask, i+1, local_sink_ID[i]);    
   }  
-  MPI_Barrier(MPI_COMM_WORLD);   
+ // MPI_Barrier(MPI_COMM_WORLD);   
   MPI_Allgather(local_sink_posx, numsinkstot, MPI_DOUBLE, list_sink_posx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_posy, numsinkstot, MPI_DOUBLE, list_sink_posy, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
   MPI_Allgather(local_sink_posz, numsinkstot, MPI_DOUBLE, list_sink_posz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
@@ -285,7 +290,7 @@ void identify_doomed_particles(void)
           if(P[k].Type == 0 && P[k].Ti_endstep == All.Ti_Current && k < N_gas ){   
             for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
 	            seperation = sqrt(seperation);   
-              if(seperation <= 0.8*sinkrad ){
+              if(seperation <= sinkrad ){
 								SphP[k].BNDPARTICLE =1;
 							}
 						}          
@@ -625,6 +630,65 @@ int index_compare_key(const void *a, const void *b)
 }
 
 #endif 
+
+
+#ifdef VARPOLYTROPE
+
+void UpdateGamma(){
+
+  double n1 = 1e3, n2= 1e9, n3=1e10;
+  double gama1= GAMMA, gama2 = 0.94884, gama3 = 1.07958;
+
+  double Gnew, Df;
+
+	double nh;
+	double mh =  2.408544e-24;
+	double Nfac = All.UnitDensity_in_cgs/mh;
+
+	for(int igas=0; igas<N_gas; igas++){
+		nh = SphP[igas].Density*Nfac;                 
+		if(nh > n1 && nh <= n2 ){
+    	if(SphP[igas].Gamma != gama1){
+				Gnew = gama1;
+				Df =  pow(SphP[igas].Density, ( SphP[igas].Gamma - Gnew )  )  ; 
+				SphP[igas].Entropy   = SphP[igas].Entropy * Df;
+			//	SphP[igas].DtEntropy = 0;
+				SphP[igas].Gamma = Gnew;                                                               
+      }
+		}
+		
+		else if(nh > n2 && nh <= n3 ){
+    	if(SphP[igas].Gamma != gama2){
+				Gnew = gama2;
+				Df =  pow(SphP[igas].Density, ( SphP[igas].Gamma - Gnew )  )  ; 
+				SphP[igas].Entropy   = SphP[igas].Entropy * Df;
+			//	SphP[igas].DtEntropy = SphP[igas].DtEntropy * Df;
+				SphP[igas].Gamma = Gnew;                                                               
+      }
+		}
+
+
+		else if(nh > n3 ){
+			if(SphP[igas].Gamma != gama3){
+						        Gnew = gama3;
+						        Df =  pow(SphP[igas].Density, ( SphP[igas].Gamma - Gnew )  )  ;
+						        SphP[igas].Entropy   = SphP[igas].Entropy * Df;
+				//		        SphP[igas].DtEntropy = SphP[igas].DtEntropy * Df;
+						        SphP[igas].Gamma = Gnew;
+			}
+		}
+		else{}
+	}
+}
+
+#endif 
+
+
+
+
+
+
+
 
 
 

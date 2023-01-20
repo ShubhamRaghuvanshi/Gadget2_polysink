@@ -126,19 +126,6 @@ void init(void)
 	}
     }
 
-	#ifdef SINK
-			for(int i=0; i<N_gas; i++){
-				SphP[i].AccretionTarget = 0;
-				SphP[i].SetDens=0; 
-				P[i].Spin[0] =0;
-				P[i].Spin[1] =0;
-				P[i].Spin[2] =0; 
-			}
-			for(int i=0; i<NumPart; i++ ){
-      	P[i].NAccreted = 0;
-				P[i].AccreteOntoSInk =-1;			
-			}
-	#endif 
 
   ngb_treeallocate(MAX_NGB);
 
@@ -161,6 +148,35 @@ void init(void)
    * explicitly signals that the initial conditions contain the entropy directly. 
    * Once the density has been computed, we can convert thermal energy to entropy.
    */
+   
+#ifdef VARPOLYTROPE
+if(RestartFlag == 0){
+        for(int i=0; i<N_gas; i++){
+            
+                SphP[i].Gamma = GAMMA;
+                SphP[i].Eta = 7.0/5.0;
+        }
+}
+#endif 
+
+#ifdef SINK
+if(RestartFlag == 0){
+        for(int i=0; i<N_gas; i++){
+                SphP[i].AccretionTarget = 0;
+                SphP[i].SetDens=0; 
+                P[i].Spin[0] =0;
+                P[i].Spin[1] =0;
+                P[i].Spin[2] =0; 
+        }
+        for(int i=0; i<NumPart; i++ ){
+                P[i].NAccreted = 0;
+                P[i].AccreteOntoSInk =-1;			
+        }
+//printf("\nMy restart flag is zero %d\n", ThisTask);
+}
+#endif 
+   
+   
 #ifdef ADIABATIC
   if(header.flag_entropy_instead_u == 0)
     for(i = 0; i < N_gas; i++)
@@ -169,9 +185,6 @@ void init(void)
 
 
 #ifdef POLYTROPE
-
- // double gamma_prev = 0.65;
- // gamma_prev  = gamma_prev -1;
   if(header.flag_entropy_instead_u == 0)
     for(i = 0; i < N_gas; i++)
       SphP[i].Entropy = ETA_MINUS1 * SphP[i].Entropy / pow(SphP[i].Density / a3, GAMMA_MINUS1);
@@ -179,11 +192,13 @@ void init(void)
 
 
 #ifdef VARPOLYTROPE
-  if(header.flag_entropy_instead_u == 0)
+  if(header.flag_entropy_instead_u == 0){
+ //   printf(" entropy in init function before conversion %g from %d\n", SphP[0].Entropy, ThisTask); 
     for(i = 0; i < N_gas; i++){
-      SphP[i].Entropy = SphP[i].Eta_minus1 * SphP[i].Entropy / pow(SphP[i].Density / a3, SphP[i].Gama_minus1);
-   //  printf("%f		%f		%f		%f\n", SphP[i].Eta_minus1, SphP[i].Gama, SphP[i].Gama_minus1, SphP[i].CV);
-      }
+      SphP[i].Entropy = (SphP[i].Eta - 1.0) * SphP[i].Entropy / pow(SphP[i].Density / a3, (SphP[i].Gamma - 1.0) );
+    }
+// printf(" Converted entropy in init function  %g,   %g,   %g,   %g       from %d\n", SphP[0].Entropy, SphP[0].Eta, SphP[0].Gamma ,SphP[0].Density,  ThisTask); 
+ }  
 #endif
 
 

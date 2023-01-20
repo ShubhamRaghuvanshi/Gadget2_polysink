@@ -209,14 +209,15 @@ void destroy_doomed_particles(void);
 int index_compare_key(const void *a, const void *b);
 #endif 
 
+
 #ifdef VARPOLYTROPE
-void setgamma();
+void UpdateGamma();
 #endif 
 
 
-#ifdef POLYTROPE
-void setgamma();
-#endif 
+//#ifdef POLYTROPE
+//void setgamma();
+//#endif 
 
 
 

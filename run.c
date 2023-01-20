@@ -33,6 +33,13 @@ void run(void)
     {
      t0 = second();
 
+      #ifdef VARPOLYTROPE
+      UpdateGamma();  
+      #endif         
+
+//			if(All.NumCurrentTiStep%500 = 0){
+//			 All.TimeBetSnapshot = All.TimeBetSnapshot/2.0; 
+//			}
 
 
       find_next_sync_point_and_drift();	/* find next synchronization point and drift particles to this time.
@@ -46,25 +53,25 @@ void run(void)
 	
       domain_Decomposition();	/* do domain decomposition if needed */
 
+  
       compute_accelerations(0);  /* compute accelerations for 
                                  * the particles that are to be advanced  
                                  *                                  *                                  */
 
 
-
-			double n_crit_cgs = 1e14, mh =  2.408544e-24;
-			double rho =  n_crit_cgs * mh/All.UnitDensity_in_cgs;           
-   		if(All.NumCurrentTiStep >=2000){
-
+#ifndef SINK
+   		if(All.NumCurrentTiStep >=All.CriticalNumstep && All.NumCurrentTiStep%10 == 0 ){
+                        double n_crit_cgs = 1e16, mh =  2.408544e-24;
+                        double rho =  n_crit_cgs * mh/All.UnitDensity_in_cgs;
 				for(int i=0; i<N_gas; i++){
 					if( SphP[i].Density > rho){ 
-					//	SphP[i].Density = rho;
-					//	printf("Maximum density reached\n")	;			
+						SphP[i].Density = rho;
+						printf("Maximum density reached\n")	;			
 						endrun(10945);			
 					}
 				}
-   		}
-
+  		}
+#endif
 
 
 	//	 if(All.NumCurrentTiStep%1000 ==0 ){cutoff();}
@@ -75,15 +82,29 @@ void run(void)
      // only check for accreted particles every 10 timesteps. this is sort of arbitrary.
      // don't destroy particles as soon as they're marked.
 
-      if(All.NumCurrentTiStep >= All.CriticalNumstep){
+      if(All.NumCurrentTiStep >= All.CriticalNumstep && All.NumCurrentTiStep%10 == 0){
+        if(SinkFlag == 0 ){
+		      if(ThisTask == TempTask){
+				    double n_crit_cgs = All.CriticalNumberDensity/5.0 , mh =  2.408544e-24;
+				    double rho =  n_crit_cgs * mh/All.UnitDensity_in_cgs;
+            if(SphP[TempIndex].Density >= rho){
+                    SinkFlag = 1;
+            }
+        } 
+        MPI_Bcast(&SinkFlag , 1, MPI_INT, TempTask, MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
+        }
+      }
+        if(SinkFlag == 1 ){
 
-          
+//printf("We are in Sink %d,  %d,  %d", ThisTask, TempTask, SinkFlag);
      //   if(All.NumCurrentTiStep%100 ==0 ){cutoff();}
  
           
 				if(All.NumCurrentTiStep%10 == 0){
+//					MPI_Barrier(MPI_COMM_WORLD);
 					create_sink();
-					MPI_Barrier(MPI_COMM_WORLD);
+//					MPI_Barrier(MPI_COMM_WORLD);					
 				}  
 
 				if(All.TotN_sink > 0 ){
@@ -104,7 +125,7 @@ void run(void)
 
 
 			N_sink = NumPart-N_gas;
-      MPI_Barrier(MPI_COMM_WORLD);
+   //   MPI_Barrier(MPI_COMM_WORLD);
 			
 			if(N_sink > 0){
 				char filename[100];
@@ -154,7 +175,7 @@ void run(void)
 							printf("ThisTask : %d, Total mass in sinks has reached 50 , you've defeated the final boss \n", ThisTask);	
 							endrun(420);
 						}
-					}
+        					}
 
       }
       
@@ -175,7 +196,6 @@ void run(void)
 	}
 
  
-  
       advance_and_find_timesteps();	/* 'kick' active particles in
 					 * momentum space and compute new
 					 * timesteps for them
@@ -422,8 +442,9 @@ int find_next_outputtime(int ti_curr)
 	{
 	  if(All.ComovingIntegrationOn)
 	    time *= All.TimeBetSnapshot;
-	  else
-	    time += All.TimeBetSnapshot;
+	  else{
+      time += All.TimeBetSnapshot;
+    }		
 
 	  iter++;
 
@@ -449,9 +470,40 @@ int find_next_outputtime(int ti_curr)
 
 	  if(All.ComovingIntegrationOn)
 	    time *= All.TimeBetSnapshot;
-	  else
-	    time += All.TimeBetSnapshot;
+	  else{
 
+if(All.FixedTimestep == 0){
+	#ifdef SINK
+	if(SinkFlag == 1 ){
+		time += 0.00002;
+	}          
+        else if(All.NumCurrentTiStep  < 1000 ){
+		time += All.TimeBetSnapshot;
+	}
+	else if(All.NumCurrentTiStep  >= 1000 && All.NumCurrentTiStep  < 2000 ){
+		time += All.TimeBetSnapshot/10.0;
+	}
+	else if (All.NumCurrentTiStep  >= 2000) {
+		time += All.TimeBetSnapshot/100.0;
+	}
+	else {} 
+	#else 
+        if(All.NumCurrentTiStep  < 1500 ){
+		time += All.TimeBetSnapshot;
+	}
+	else if(All.NumCurrentTiStep  >= 1500 && All.NumCurrentTiStep  < 1900 ){
+		time += All.TimeBetSnapshot/10.0;
+	}
+	else if (All.NumCurrentTiStep  >= 1900) {
+		time += 0.000003;
+	}
+	else {} 
+  #endif 
+	} //not fixed time
+else {time += All.TimeBetSnapshot;}
+
+}
+	   
 	  iter++;
 
 	  if(iter > 1000000)
@@ -492,23 +544,40 @@ int find_next_outputtime(int ti_curr)
  */
 void every_timestep_stuff(void)
 {
-  double z;
-  double mh = (2.408544e-24), rho_m=0 ;
+  float z;
+  float mh = (2.408544e-24) ;
   int thistask=0, index=0;	
+  
+  TempFac =  meanweight * All.UnitEnergy_in_cgs * PROTONMASS/(BOLTZMANN* All.UnitMass_in_g );
 
-  if(All.NumCurrentTiStep%2 == 0){
-    find_max_dens(&thistask, &index);
-    if(thistask == ThisTask){
-      rho_m = SphP[index].Density;
-      rho_n = rho_m*All.UnitDensity_in_cgs/mh;
-      smthl = SphP[index].Hsml;
+//temp_gamma, temp_nrho, temp_T
+
+
+  if(All.NumCurrentTiStep%10 == 0){
+  
+    find_max_dens(&TempTask, &TempIndex);
+    if(ThisTask == TempTask){
+      temp_nrho = SphP[TempIndex].Density*All.UnitDensity_in_cgs/mh;
+      temp_smthl = SphP[TempIndex].Hsml;
+            	
+      #ifdef VARPOLYTROPE
+      temp_gamma  = SphP[TempIndex].Gamma;
+      temp_T  = SphP[TempIndex].Entropy * pow(SphP[TempIndex].Density, ( SphP[TempIndex].Gamma - 1.0 )  ) ;
+      temp_T  = temp_T*TempFac;
+      #else
+      temp_gamma = GAMMA; 
+      temp_T  = SphP[TempIndex].Entropy * pow(SphP[TempIndex].Density, GAMMA_MINUS1  ) ;
+      temp_T  = temp_T*TempFac;
+      #endif
     }
 
-  MPI_Bcast(&rho_n, 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
-  MPI_Bcast(&rho_m, 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
-  MPI_Bcast(&smthl , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
+  MPI_Bcast(&temp_nrho  , 1, MPI_DOUBLE, TempTask, MPI_COMM_WORLD);
+  MPI_Bcast(&temp_smthl , 1, MPI_DOUBLE, TempTask, MPI_COMM_WORLD);
+  MPI_Bcast(&temp_gamma , 1, MPI_DOUBLE, TempTask, MPI_COMM_WORLD);
+  MPI_Bcast(&temp_T     , 1, MPI_DOUBLE, TempTask, MPI_COMM_WORLD);
+
   }	
-  MPI_Barrier(MPI_COMM_WORLD);
+  //MPI_Barrier(MPI_COMM_WORLD);
 
 
   if(ThisTask == 0)
@@ -518,18 +587,18 @@ void every_timestep_stuff(void)
       if(All.ComovingIntegrationOn)
 	{
 	  z = 1.0 / (All.Time) - 1;
-	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n",
+	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, hsml: %g, TotNumPart: %d , maxdens: %g , GAMMA: %g\n",
 		  All.NumCurrentTiStep, All.Time, z, All.TimeStep,
-		  log(All.Time) - log(All.Time - All.TimeStep), rho_m*All.UnitDensity_in_cgs/mh, smthl, All.TotNumPart, GAMMA);
+		  log(All.Time) - log(All.Time - All.TimeStep), temp_smthl, All.TotNumPart, temp_nrho , temp_gamma);
 	  printf("\nBegin Step %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n", All.NumCurrentTiStep,
-		 All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep), rho_m*All.UnitDensity_in_cgs/mh, smthl, All.TotNumPart, GAMMA);
+		 All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep), temp_nrho, temp_smthl, All.TotNumPart, temp_gamma);
 	  fflush(FdInfo);
 	}
       else
 	{
-	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Systemstep: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n", All.NumCurrentTiStep, All.Time,
-		  All.TimeStep, rho_m*All.UnitDensity_in_cgs/mh, smthl, All.TotNumPart, GAMMA);
-	  printf("\nBegin Step %d, Time: %g, Systemstep: %g, maxdens: %g, hsml: %g, TotNumPart: %d, GAMMA: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep,  rho_m*All.UnitDensity_in_cgs/mh, smthl,All.TotNumPart, GAMMA);
+	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Systemstep: %g, hsml: %g, TotNumPart: %d , maxdens: %g , GAMMA: %g, Temp: %g\n", All.NumCurrentTiStep, All.Time,
+		  All.TimeStep, temp_smthl, All.TotNumPart, temp_nrho , temp_gamma, temp_T);
+	  printf("\nBegin Step %d, Time: %g, Systemstep: %g, hsml: %g, TotNumPart: %d , maxdens: %g, GAMMA: %g, Temp: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep, temp_smthl ,All.TotNumPart, temp_nrho , temp_gamma, temp_T);
 	  fflush(FdInfo);
 	}
 
@@ -702,7 +771,11 @@ void create_sink(){
 
 //	FLOAT hsml; 
 
-	find_max_dens(&thistask, &index);	
+// find_max_dens(&TempTask, &TempIndex);
+//	find_max_dens(&thistask, &index);	
+
+	thistask = TempTask;
+  index = TempIndex;
 
 	int   issink=0, sinkid, i_ngb, num, startnode;
   FLOAT sp_pos[3], sp_vel[3], t_pos[3], t_vel[3]; 
@@ -719,16 +792,18 @@ void create_sink(){
 		 SphP[itag].AccretionTarget =0;
 	 }  
 
-
+  TempFac =  meanweight * All.UnitEnergy_in_cgs * PROTONMASS/(BOLTZMANN* All.UnitMass_in_g );
 	if(ThisTask == thistask){	
-
-		u = SphP[index].Entropy / ETA_MINUS1 * pow(SphP[index].Density, GAMMA_MINUS1);
+    #ifdef VARPOLYTROPE
+    Temp  = SphP[index].Entropy * pow(SphP[index].Density, ( SphP[index].Gamma - 1.0 )  ) ;
+    Temp  = Temp*TempFac;
+    #else 
+    Temp  = SphP[index].Entropy * pow(SphP[index].Density, GAMMA_MINUS1  ) ;
+    Temp  = Temp*TempFac;
+    #endif
+		printf("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& Temp = %g,    All.NumCurrentTiStep= %d, ThisTask = %d \n", Temp, All.NumCurrentTiStep, ThisTask);
 		
-		Temp = u*TempFac;  
-		
-		printf("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& Temp = %g \n", Temp);
-		
-		if(SphP[index].Density >= CriticalMassDensity && Temp >= All.CriticalTemperature){	
+		if(SphP[index].Density >= CriticalMassDensity && Temp >= All.CriticalTemperature && SphP[index].Hsml <  All.AccretionRadius/2.0){	
 			
 		//		hsml = SphP[index].Hsml;
 		//	All.AccretionRadius = 4.0*hsml;			//comment this to set accretion radius manually	
@@ -758,30 +833,29 @@ void create_sink(){
 		} //crit dens
 
 		if(issink){
-
+		
 			P[index].Type = 4;
-
+      SphP[index].DtEntropy = 0;
 			temp_p   =  P[index];
 			temp_sph =  SphP[index];
 
-	    for(int k = index; k<=NumPart-2- numsinks ; k++){ 
-  	  	P[k]    = P[k+1];
-  	   	SphP[k] = SphP[k+1]; 
-  	  } 
- 	    P[NumPart -1 - numsinks]   = temp_p;
-  	  SphP[NumPart-1 - numsinks] = temp_sph;      
+			for(int k = index; k<=NumPart-2- numsinks ; k++){ 
+					P[k]    = P[k+1];
+					SphP[k] = SphP[k+1]; 
+			} 
+			P[NumPart -1 - numsinks]   = temp_p;
+			SphP[NumPart-1 - numsinks] = temp_sph;      
 
 			printf("ThisTask = %d,  moving sink from %d to %d, sink ID: %d, numsinklocal: %d, numsinkstot: %d, N_gas: %d, NumPart: %d\n", ThisTask, index, NumPart -1 - numsinks, P[NumPart -1 - numsinks].ID, numsinks, numsinkstot, N_gas, NumPart);
   	  N_gas--;
-
 		}
 	} //thistask
 	MPI_Bcast(&issink , 1, MPI_INT	 , thistask, MPI_COMM_WORLD);
-
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(issink){
 		MPI_Bcast(&sinkid , 1, MPI_INT	 , thistask, MPI_COMM_WORLD);
-		MPI_Bcast(&sp_pos , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
-		MPI_Bcast(&sp_vel , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
+		MPI_Bcast(&sp_pos , 3, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
+		MPI_Bcast(&sp_vel , 3, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
 		MPI_Bcast(&hsml   , 1, MPI_DOUBLE, thistask, MPI_COMM_WORLD);
 	
 
@@ -794,17 +868,16 @@ void create_sink(){
 				i_ngb = Ngblist[n];
 				if(P[i_ngb].Type == 0  && P[i_ngb].Ti_endstep == All.Ti_Current ){  
 					dist = 0;
-				  for(int j = 0; j < 3; j++){ 
-				  	dist += (P[i_ngb].Pos[j]-sp_pos[j]) * (P[i_ngb].Pos[j]-sp_pos[j]);
-				  }   
-				  dist = sqrt(dist);     
-				  if(dist <= twohsml){
-						SphP[i_ngb].AccretionTarget = sinkid;
+				        for(int j = 0; j < 3; j++){ 
+				  	        dist += (P[i_ngb].Pos[j]-sp_pos[j]) * (P[i_ngb].Pos[j]-sp_pos[j]);
+				        }   
+				        dist = sqrt(dist);     
+				        if(dist <= twohsml){
+					        SphP[i_ngb].AccretionTarget = sinkid;
 					}
 				}
 			} 
  		}while(startnode>=0);
-
 
 		FLOAT dposx=0, dposy=0, dposz=0, dvelx=0, dvely=0, dvelz=0, dmass=0, spinx=0, spiny=0, spinz=0;
 		FLOAT dposxtot=0, dposytot=0, dposztot=0, dvelxtot=0, dvelytot=0, dvelztot=0, dmasstot=0, spinxtot=0, spinytot=0, spinztot=0;      
@@ -851,7 +924,7 @@ void create_sink(){
     MPI_Barrier(MPI_COMM_WORLD);     
 	
 		if(ThisTask == thistask){
-			index = NumPart -1;
+			index = NumPart -1- numsinks;
 			dposxtot += P[index].Pos[0] * P[index].Mass;
 			dposytot += P[index].Pos[1] * P[index].Mass;	
 			dposztot += P[index].Pos[2] * P[index].Mass;
@@ -879,8 +952,9 @@ void create_sink(){
 			P[index].Spin[1] += spinytot;
 			P[index].Spin[2] += spinztot;
 
-			P[index].NAccreted = round(P[index].Mass/P[0].Mass) ; 
+			//P[index].NAccreted = round(P[index].Mass/P[0].Mass) ; 
 
+      P[index].NAccreted = AccNum;
 			P[index].Ti_endstep = All.Ti_Current;		
 		}
 		MPI_Barrier(MPI_COMM_WORLD); 
@@ -912,7 +986,6 @@ void create_sink(){
 		MPI_Allreduce(&NumPart, &All.TotNumPart	 , 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&N_sink , &All.TotN_sink	 , 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&AccNum , &All.TotN_accrete, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-		MPI_Barrier(MPI_COMM_WORLD); 
 
 
 		header.npart[0] 		= All.TotN_gas;
@@ -920,7 +993,7 @@ void create_sink(){
   	AccNumAll += All.TotN_accrete;
 
 		if(ThisTask == thistask){
-			printf("ThisTask: %d, Created sink with %d neigbours within the radius %g\n", ThisTask, All.TotN_accrete, twohsml);
+			printf("ThisTask: %d, Created sink with %d neigbours within the radius %g,  All.TotN_sink : %d \n", ThisTask, All.TotN_accrete, twohsml, All.TotN_sink);
 		}
 
 	}	 //issink
@@ -933,6 +1006,9 @@ void create_sink(){
   free(local_sink_posy);
   free(local_sink_posz);  
   free(local_sink_ID);      
+  
+	MPI_Barrier(MPI_COMM_WORLD); 
+
 }
 
 
@@ -1205,16 +1281,7 @@ void sinkmerger(){
   free(local_sink_mass);      
 }
 
-
-#endif 
-
-
-
-
-
-
-
-
+#endif
 
 
 

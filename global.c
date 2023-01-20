@@ -73,8 +73,15 @@ void compute_global_quantities_of_system(void)
 	  if(P[i].Type == 0)
 	    vel[j] += SphP[i].HydroAccel[j] * dt_hydrokick;
 	}
+    //  #ifdef VARPOLYTROPE  
+     // if(P[i].Type == 0)
+	//entr = SphP[i].Entropy  + SphP[i].DtEntropy * dt_entr;
+   //   #else 
       if(P[i].Type == 0)
-	entr = SphP[i].Entropy + SphP[i].DtEntropy * dt_entr;
+	entr = SphP[i].Entropy  + SphP[i].DtEntropy * dt_entr;
+     // #endif     
+        
+        
 
 #ifdef PMGRID
       if(All.ComovingIntegrationOn)
@@ -105,7 +112,7 @@ void compute_global_quantities_of_system(void)
 #endif
 
 #ifdef VARPOLYTROPE
-	  egyspec = entr / (SphP[i].Eta_minus1) * pow(SphP[i].Density / a3, SphP[i].Gama_minus1);
+	  egyspec = entr / (SphP[i].Eta - 1.0) * pow(SphP[i].Density / a3, (SphP[i].Gamma- 1.0)  );
 #endif
 
 

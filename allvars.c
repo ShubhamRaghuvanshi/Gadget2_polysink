@@ -8,12 +8,12 @@
 #include "allvars.h"
 
 
-double GAMMA, GAMMA_MINUS1;
-
-#ifdef POLYTROPE
-double CV,ETA_MINUS1; 
-#endif
-
+FLOAT GAMMA, GAMMA_MINUS1 ;
+FLOAT CV,ETA_MINUS1; 
+FLOAT TempFac;
+FLOAT meanweight;
+float temp_gamma, temp_nrho, temp_T, temp_smthl;
+int TempTask, TempIndex;
 
 int ThisTask;		/*!< the rank of the local processor */
 int NTask;               /*!< number of processors */
@@ -22,16 +22,16 @@ int PTask;	        /*!< smallest integer such that NTask <= 2^PTask */
 int NumPart;		/*!< number of particles on the LOCAL processor */
 int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 
-FLOAT rho_n;
-FLOAT smthl;
+
+
 #ifdef SINK
 int *AccreteList;        /*!< Buffer to hold indices of particles to be accreted */
 int AccNum=0;
 int AccNumAll=0;
 int N_accrete;
 int N_sink;
+int SinkFlag=0;
 FLOAT TotMassInSinks=0;
-FLOAT TempFac;
 #endif 
 
 

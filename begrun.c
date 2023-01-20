@@ -49,8 +49,10 @@ ETA_MINUS1   =  (1.0/CV);
 
 
 #ifdef VARPOLYTROPE
-GAMMA        =  (5.0/3.0);     /*!< index for isothermal gas */
+GAMMA        =  (1.11126);     /*!< index for isothermal gas */
 GAMMA_MINUS1 =  (GAMMA-1);
+CV           =  (5.0/2.0);
+ETA_MINUS1   =  (1.0/CV);
 #endif
 
 
@@ -82,10 +84,10 @@ GAMMA_MINUS1 =  (GAMMA-1);
 
   All.TimeLastRestartFile = CPUThisRun;
 
+
   if(RestartFlag == 0 || RestartFlag == 2)
     {
       set_random_numbers();
-
       init();			/* ... read in initial model */
     
 //	#ifdef POLYTROPE
@@ -139,6 +141,8 @@ GAMMA_MINUS1 =  (GAMMA-1);
       All.CourantFac = all.CourantFac;
 
       All.OutputListLength = all.OutputListLength;
+      All.FixedTimestep = all.FixedTimestep;        
+          
       memcpy(All.OutputListTimes, all.OutputListTimes, sizeof(double) * All.OutputListLength);
 
 
@@ -181,8 +185,7 @@ GAMMA_MINUS1 =  (GAMMA-1);
  */
 void set_units(void)
 {
-  double meanweight;
-
+  
   All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
   All.UnitTime_in_Megayears = All.UnitTime_in_s / SEC_PER_MEGAYEAR;
 
@@ -218,31 +221,32 @@ void set_units(void)
 
   meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: we assume neutral gas here */
 
-#ifdef SINK
-	TempFac = (ETA_MINUS1)* meanweight * All.UnitEnergy_in_cgs * PROTONMASS/(BOLTZMANN* All.UnitMass_in_g );
-#endif 
 
 #ifdef ISOTHERM_EQS
   All.MinEgySpec = 0;
 #endif 
   
 #ifdef ADIABATIC
-  All.MinEgySpec = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
+  All.MinEgySpec = 1.0 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
   All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
-  All.MaxEgySpec = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MaxGasTemp;
+  All.MaxEgySpec = 1.0 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MaxGasTemp;
   All.MaxEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
 #endif
 
 #ifdef POLYTROPE
-  All.MinEgySpec = 1 / meanweight * (1.0 / ETA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
+  All.MinEgySpec = 1.0 / meanweight * (1.0 / ETA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
   All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
-
-
-  All.MaxEgySpec = 1 / meanweight * (1.0 / ETA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MaxGasTemp;
+  All.MaxEgySpec = 1.0 / meanweight * (1.0 / ETA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MaxGasTemp;
   All.MaxEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+#endif 
 
+#ifdef VARPOLYTROPE
+  All.MinEgySpec = 1.0 / meanweight * (1.0 / ETA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
+  All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+  All.MaxEgySpec = 1.0 / meanweight * (1.0 / ETA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MaxGasTemp;
+  All.MaxEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 #endif 
 
 
@@ -682,6 +686,15 @@ void read_parameter_file(char *fname)
       id[nt++] = DOUBLE;
 
 /*CUTOFF*/
+
+/*CUTOFF*/
+      strcpy(tag[nt], "FixedTimestep");
+      addr[nt] = &All.FixedTimestep;
+      id[nt++] = INT;
+
+/*CUTOFF*/
+
+
       if((fd = fopen(fname, "r")))
 	{
 	  sprintf(buf, "%s%s", fname, "-usedvalues");
@@ -929,4 +942,19 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 
   All.TimeMax = TimeMax_new;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
