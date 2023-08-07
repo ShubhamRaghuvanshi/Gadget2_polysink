@@ -144,7 +144,7 @@ extern int *AccreteList;        /*!< Buffer to hold indices of particles to be a
 extern int AccNum;
 extern int AccNumAll;
 extern int N_accrete;
-extern int N_sink;
+extern int N_sink, N_BND;
 extern int SinkFlag;
 extern FLOAT TotMassInSinks;
 #endif 
@@ -604,19 +604,17 @@ extern struct sph_particle_data
   FLOAT DhsmlDensityFactor;     /*!< correction factor needed in the equation of motion of the conservative entropy formulation of SPH */
   FLOAT MaxSignalVel;           /*!< maximum "signal velocity" occuring for this particle */
 
-	#ifdef SINK
-	int AccretionTarget;
-	int SetDens;
-	FLOAT AccTime;
-	int BNDPARTICLE;
-	#endif
+  #ifdef SINK
+  int AccretionTarget, NBND; 
+  FLOAT sinkdist[10], sinkmass[10];
+  FLOAT sink_posx[10], sink_posy[10], sink_posz[10];
+  FLOAT sink_velx[10], sink_vely[10], sink_velz[10]; 
+  #endif
 
-
-	#ifdef VARPOLYTROPE
-	FLOAT Gamma;
-    FLOAT Eta;
-	#endif 
-
+  #ifdef VARPOLYTROPE
+  FLOAT Gamma;
+  FLOAT Eta;
+  #endif 
 }
  *SphP,                        	/*!< holds SPH particle data on local processor */
  *DomainSphBuf;                 /*!< buffer for SPH particle data in domain decomposition */
@@ -834,7 +832,7 @@ extern struct hydrodata_in
   int   Index;
 
   #ifdef SINK
-  int BNDPARTICLE;
+  int NBND;
   int AccretionTarget;
   #endif 
 
