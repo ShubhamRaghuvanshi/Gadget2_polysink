@@ -20,9 +20,10 @@ void allocate_commbuffers(void)
 {
   size_t bytes;
 
-	#ifdef SINK
-	 AccreteList = malloc(100000 * sizeof(int));
-	#endif 
+  #ifdef SINK
+  AccreteList = malloc(10000 * sizeof(int));
+  BNDList = malloc(10000 * sizeof(int));
+  #endif 
 
 
   Exportflag = malloc(NTask * sizeof(char));
