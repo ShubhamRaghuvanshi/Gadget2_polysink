@@ -141,6 +141,7 @@ extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 
 #ifdef SINK
 extern int *AccreteList;        /*!< Buffer to hold indices of particles to be accreted */
+extern int *BNDList;      /*!< Buffer to hold indices of boundary particles */
 extern int AccNum;
 extern int AccNumAll;
 extern int N_accrete;
