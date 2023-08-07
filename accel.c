@@ -67,6 +67,9 @@ void compute_accelerations(int mode)
 
       tstart = second();
       density();		/* computes density, and pressure */
+      #ifdef SINK	    
+      setdens();
+      #endif 	    
       tend = second();
       All.CPU_Hydro += timediff(tstart, tend);
 
