@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <mpi.h>
-
+#include <time.h>
 #include "allvars.h"
 #include "proto.h"
 
@@ -670,7 +670,7 @@ void CorrectByVol( int igas){
       break;
     }
   }
-  print("Outer Density estimate: %g, NumNgb: %d  %d, nbnd:  %d\n", rho, ngb, SphP[igas].NumNgb, nbnd);
+  printf("Outer Density estimate: %g, NumNgb: %d  %d, nbnd:  %d\n", rho, ngb, SphP[igas].NumNgb, nbnd);
 
   h = pow( 3.0*ngb*mass_j/(4.0*M_PI*rho), 1.0/3.0 );
   hinv = 1.0/h;
@@ -684,7 +684,7 @@ void CorrectByVol( int igas){
   rotv[1]=0;
   rotv[2]=0;  
   // Now correct other quantities
-  for(int ibnd=0; i<nbnd; ibnd++ ){
+  for(int ibnd=0; ibnd<nbnd; ibnd++ ){
     d = SphP[igas].sinkdist[ibnd] ;
     m_sink = SphP[igas].sinkmass[ibnd];
     SinkPos[0] = SphP[igas].sink_posx[ibnd];
