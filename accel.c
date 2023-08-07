@@ -85,17 +85,14 @@ void compute_accelerations(int mode)
       tstart = second();
       hydro_force();		/* adds hydrodynamical accelerations and computes viscous entropy injection  */
   
-	#ifdef SINK
-		for(int i=0; i<N_gas; i++){					
-			if(P[i].Type == 0 && SphP[i].BNDPARTICLE == 1){
-			SphP[i].DtEntropy = 0;	
-			for(int k = 0; k < 3; k++)
-				SphP[i].HydroAccel[k] = 0;					
-			} 
-		}
-	#endif 
-
-     
+      #ifdef SINK
+      for (int i=0; i<N_BND; i++ ){
+        SphP[BNDList[i]].DtEntropy=0;
+	SphP[BNDList[i]].HydroAccel[0]=0;
+	SphP[BNDList[i]].HydroAccel[1]=0;
+	SphP[BNDList[i]].HydroAccel[2]=0;      	      
+      }	
+      #endif 
       
       tend = second();
       All.CPU_Hydro += timediff(tstart, tend);
