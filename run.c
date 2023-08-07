@@ -488,14 +488,14 @@ if(All.FixedTimestep == 0){
 	}
 	else {} 
 	#else 
-        if(All.NumCurrentTiStep  < 1500 ){
+        if(All.NumCurrentTiStep  < 2000 ){
 		time += All.TimeBetSnapshot;
 	}
-	else if(All.NumCurrentTiStep  >= 1500 && All.NumCurrentTiStep  < 1900 ){
+	else if(All.NumCurrentTiStep  >= 2000 && All.NumCurrentTiStep  < 4000 ){
 		time += All.TimeBetSnapshot/10.0;
 	}
-	else if (All.NumCurrentTiStep  >= 1900) {
-		time += 0.000003;
+	else if (All.NumCurrentTiStep  >= 4000) {
+		time += All.TimeBetSnapshot/10.0;
 	}
 	else {} 
   #endif 
