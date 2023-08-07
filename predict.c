@@ -211,12 +211,13 @@ void identify_doomed_particles(void)
   }
   
   //printf("starting accretion, rank %d, %d accretors\n",ThisTask,NumPart-N_gas);
-	AccNum = 0;
-	for(int itag=0; itag<N_gas; itag++){
-		SphP[itag].AccretionTarget =0;
-		SphP[itag].BNDPARTICLE = 0;
-	}  
-   
+  AccNum = 0;
+  N_BND=0;
+  for(int igas=0; igas<N_gas; igas++){
+    SphP[igas].AccretionTarget =0;
+    SphP[igas].NBND = 0;
+  }  
+	
   numsinks = NumPart - N_gas; 
   MPI_Allreduce(&numsinks, &numsinkstot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -286,14 +287,23 @@ void identify_doomed_particles(void)
         for(n = 0; n < num; n++){
           k = Ngblist[n];
 
-
           if(P[k].Type == 0 && P[k].Ti_endstep == All.Ti_Current && k < N_gas ){   
             for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
-	            seperation = sqrt(seperation);   
-              if(seperation <= sinkrad ){
-								SphP[k].BNDPARTICLE =1;
-							}
-						}          
+	      seperation = sqrt(seperation);   
+              if(seperation <= sinkrad + SphP[k].Hsml){
+		SphP[k].sink_posx[SphP[k].NBND] = pos[0];
+                SphP[k].sink_posy[SphP[k].NBND] = pos[1];
+                SphP[k].sink_posz[SphP[k].NBND] = pos[2];
+
+                SphP[k].sink_velx[SphP[k].NBND] = vel[0];
+                SphP[k].sink_vely[SphP[k].NBND] = vel[1];
+                SphP[k].sink_velz[SphP[k].NBND] = vel[2];
+                
+		SphP[k].NBND++;
+                BNDList[N_BND] = k;
+                N_BND++;
+	     }
+	   }          
         
           
           //We want to only mark particles for accretion if they haven't been marked previously
