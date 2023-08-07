@@ -156,7 +156,7 @@ void hydro_force(void)
 		    HydroDataIn[nexport].Timestep = P[i].Ti_endstep - P[i].Ti_begstep;
 			
         		#ifdef SINK
-	                HydroDataIn[nexport].BNDPARTICLE = SphP[i].BNDPARTICLE;
+	                HydroDataIn[nexport].NBND = SphP[i].NBND;
 	                HydroDataIn[nexport].AccretionTarget = SphP[i].AccretionTarget;	
 	        	#endif 
 
