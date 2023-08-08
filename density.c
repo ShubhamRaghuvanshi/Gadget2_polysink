@@ -677,12 +677,9 @@ void CorrectByVol( int igas){
     xod = xo-d;
     vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;   
     if( r1>=r2 ){
-    	if( d > r1-r2 ) {
-      	  rho = SphP[igas].Density/( 1.0 - f_acc*vh/vol );
-    	}
-	else{
-	  vol = v1;	
-	}     
+    if( d > r1-r2 ) {
+      rho = SphP[igas].Density/( 1.0 - f_acc*vh/vol );
+    }
     }
     else {
       vol = vh;
