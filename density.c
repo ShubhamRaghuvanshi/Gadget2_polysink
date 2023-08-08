@@ -630,7 +630,7 @@ int dens_compare_key(const void *a, const void *b)
 #ifdef SINK
 
 void setdens(){       
-      for (int i=0; i<N_BND; i++ ){
+      for (int i=0; i<N_BND; i++ ){       
         CorrectByVol(BNDList[i]);
       }
 }
