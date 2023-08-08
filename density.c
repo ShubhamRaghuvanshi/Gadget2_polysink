@@ -629,21 +629,27 @@ int dens_compare_key(const void *a, const void *b)
 
 #ifdef SINK
 
-void setdens(){       
-      for (int i=0; i<N_BND; i++ ){       
+void setdens(){     
+
+  for(int i=0; i<N_gas; i++){
+    if( SphP[i].NBND > 0 ) {
+        printf("ThisTask: %d, Correcting for particle: %d with nbnd: %d\n", ThisTask, BNDList[i], SphP[i].NBND);
         CorrectByVol(BNDList[i]);
-      }
+    }   
+  }
 }
 
 void CorrectByVol( int igas){
 
   int nbnd = SphP[igas].NBND;
-  FLOAT r1 = All.AccretionRadius, r2 = SphP[igas].Hsml;
+  FLOAT r1,r2, Rs, Rh;
+  FLOAT v1, v2, Vs, Vh;
+
   FLOAT d, xo, xod, yo, vol, th, phi, thm;
   FLOAT dt_entr, rho, f_acc=1.0;
   FLOAT r,h,hinv,hinv3,hinv4,wk,dwk,u;
   FLOAT dx,dy,dz,dvx,dvy,dvz,divv,fac,dhsmlrho;
-  FLOAT vh = 4.0*r2*r2*r2/3.0;
+  //FLOAT vh = 4.0*r2*r2*r2/3.0;
   FLOAT mass_j = P[igas].Mass;
   int ngb = (int) (4.0*M_PI*r2*r2*r2*SphP[igas].Density/(3.0*mass_j) ) ;
   int missing_ngb,j ;
@@ -652,11 +658,16 @@ void CorrectByVol( int igas){
   FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
   FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
 
-  if( r1 < r2 || nbnd == 0){
-    printf("HSML > RS\n");
-    endrun(1507);	  
-  }
-	
+  Rs = All.AccretionRadius;
+  Rh = SphP[igas].Hsml;
+  Vs = 4.0*Rs*Rs*Rs/3.0;
+  Vh = 4.0*Rh*Rh*Rh/3.0;
+
+  r1 = All.AccretionRadius;
+  r2 = SphP[igas].Hsml;
+  v1 = 4.0*r1*r1*r1/3.0;
+  v2 = 4.0*r2*r2*r2/3.0;	
+
   srand(time(0));
   rho=0; 
   // First get correct smoothing length
@@ -665,21 +676,27 @@ void CorrectByVol( int igas){
     xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
     xod = xo-d;
     vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;   
-
+    if( r1>=r2 ){
     if( d > r1-r2 ) {
-      rho = rho + SphP[igas].Density/( 1.0 - f_acc*vh/vol );
+      rho = SphP[igas].Density/( 1.0 - f_acc*vh/vol );
+    }
     }
     else {
-      printf("ThisTask: %d, Particle %d, completely inside sink radius, vol: %g \n", ThisTask, igas, vol);
+      vol = vh;
       rho = All.CriticalNumberDensity*(2.408544e-24) / All.UnitDensity_in_cgs;
-      vol = vh;    
+      printf("ThisTask: %d, Particle %d, completely inside sink radius, vol: %g \n", ThisTask, igas, vol);
       break;
     }  
   }
   
   h = pow( 3.0*ngb*mass_j/(4.0*M_PI*rho), 1.0/3.0 );
 
-  printf(" ThisTask: %d, igas: %d  Estimated Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);	
+  printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, SphP[igas].Density ,ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);	
+
+  if( r1 < h || nbnd ==0 ){
+    printf("HSML > RS for particle: %d, %g, nbnd: %d\n", igas, r1-r2, nbnd);
+    endrun(1507);
+  }
 	
   hinv = 1.0/h;
   hinv3 = hinv*hinv*hinv;
@@ -756,7 +773,7 @@ void CorrectByVol( int igas){
       
       temp_r = rel_pos[0]*rel_pos[0] + rel_pos[1]*rel_pos[1] + rel_pos[2]*rel_pos[2];
       if( temp_r > r1*r1 || temp_r < (d-r1)*(d-r1) ){
-        printf("Random position not correctly generated\n");  
+        printf("Position not correctly generated for %d, %g  %g \n", igas, temp_r - r1*r1, temp_r < (d-r1)*(d-r1) );  
         endrun(101);
       }
 
