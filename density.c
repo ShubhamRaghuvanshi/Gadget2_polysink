@@ -824,39 +824,40 @@ void CorrectByVol( int igas){
       rotv[2] += fac * (dy * dvx - dx * dvy);
         
     }
+  } //bnd
 
-    //undo the final operations
-    SphP[igas].DivVel  = SphP[igas].DivVel*SphP[igas].Density;
-    SphP[igas].CurlVel = SphP[igas].CurlVel*SphP[igas].Density;
+  //undo the final operations
+  SphP[igas].DivVel  = SphP[igas].DivVel*SphP[igas].Density;
+  SphP[igas].CurlVel = SphP[igas].CurlVel*SphP[igas].Density;
 
-    if( SphP[igas].DhsmlDensityFactor == 0 ){
-      printf("Houston, we got a problem\n");
-      endrun(212);
-    }
-    else{
-      SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
-    }
+  if( SphP[igas].DhsmlDensityFactor == 0 ){
+    printf("Houston, we got a problem\n");
+    endrun(212);
+  }
+  else{
+    SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
+  }
 
-    SphP[igas].Hsml = h;
-    SphP[igas].Density += rho;
-    SphP[igas].DivVel += divv;
-    SphP[igas].DhsmlDensityFactor += dhsmlrho;
-    SphP[igas].Rot[0] += rotv[0];
-    SphP[igas].Rot[1] += rotv[1];
-    SphP[igas].Rot[2] += rotv[2];
+  SphP[igas].Hsml = h;
+  SphP[igas].Density += rho;
+  SphP[igas].DivVel += divv;
+  SphP[igas].DhsmlDensityFactor += dhsmlrho;
+  SphP[igas].Rot[0] += rotv[0];
+  SphP[igas].Rot[1] += rotv[1];
+  SphP[igas].Rot[2] += rotv[2];
 
-    //redo the final operations
-    SphP[igas].DivVel /= SphP[igas].Density;
-    SphP[igas].DhsmlDensityFactor = 1.0 / (1.0 + SphP[igas].Hsml * SphP[igas].DhsmlDensityFactor / (NUMDIMS * SphP[igas].Density) );
+  //redo the final operations
+  SphP[igas].DivVel /= SphP[igas].Density;
+  SphP[igas].DhsmlDensityFactor = 1.0 / (1.0 + SphP[igas].Hsml * SphP[igas].DhsmlDensityFactor / (NUMDIMS * SphP[igas].Density) );
   
-    SphP[igas].CurlVel = sqrt(SphP[igas].Rot[0] * SphP[igas].Rot[0] +
-				       SphP[igas].Rot[1] * SphP[igas].Rot[1] +
-				       SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
+  SphP[igas].CurlVel = sqrt(SphP[igas].Rot[0] * SphP[igas].Rot[0] +
+			    SphP[igas].Rot[1] * SphP[igas].Rot[1] +
+			    SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
 
 	
-    dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
-    SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
-  } //bnd
+  dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
+  SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
+	
   printf(" ThisTask: %d, igas: %d  Corrected Density: %g\n", ThisTask, igas, rho); 	
 }
 #endif
