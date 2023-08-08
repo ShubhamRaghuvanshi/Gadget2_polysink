@@ -610,6 +610,7 @@ extern struct sph_particle_data
   FLOAT sinkdist[10], sinkmass[10];
   FLOAT sink_posx[10], sink_posy[10], sink_posz[10];
   FLOAT sink_velx[10], sink_vely[10], sink_velz[10]; 
+  FLOAT prev_hsml, prev_dens;
   #endif
 
   #ifdef VARPOLYTROPE
