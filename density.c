@@ -805,7 +805,7 @@ void CorrectByVol( int igas){
       }
       else if ( r1<r2 && d< r2-r1 ){
         if( temp_r > r1*r1 || r>d+r1 || r<d-r1  ){
-          printf("Position exeption 2 for %d, %g  %g \n", igas );  
+          printf("Position exeption 2 for %d \n", igas );  
           endrun(101);
         }
       }
