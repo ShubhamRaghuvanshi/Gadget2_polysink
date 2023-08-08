@@ -637,7 +637,7 @@ void setdens(){
 
 void CorrectByVol( int igas){
 
-  FLOAT nbnd = SphP[igas].NBND;
+  int nbnd = SphP[igas].NBND;
   FLOAT r1 = All.AccretionRadius, r2 = SphP[igas].Hsml;
   FLOAT d, xo, xod, yo, vol, th, phi, thm;
   FLOAT dt_entr, rho, f_acc=1.0;
@@ -645,13 +645,18 @@ void CorrectByVol( int igas){
   FLOAT dx,dy,dz,dvx,dvy,dvz,divv,fac,dhsmlrho;
   FLOAT vh = 4.0*r2*r2*r2/3.0;
   FLOAT mass_j = P[igas].Mass;
-  int ngb = (4.0/3.0)*M_PI*r2*r2*r2*SphP[igas].Density/mass_j;
+  int ngb = (int) (4.0*M_PI*r2*r2*r2*SphP[igas].Density/(3.0*mass_j) ) ;
   int missing_ngb,j ;
   
   FLOAT SinkPos[3], SinkVel[3], m_sink, rs;
   FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
   FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
 
+  if( r1 < r2 ){
+    printf("HSML > RS\n");
+    endrun(1507);	  
+  }
+	
   srand(time(0));
   rho=0; 
   // First get correct smoothing length
@@ -661,18 +666,21 @@ void CorrectByVol( int igas){
     xod = xo-d;
     vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;   
 
-    if( xo < r1 && d > r1-r2 ) {
+    if( d > r1-r2 ) {
       rho = rho + SphP[igas].Density/( 1.0 - f_acc*vh/vol );
     }
-    else{
-      printf("Particle completely inside sink radius \n");
+    else {
+      printf("ThisTask: %d, Particle %d, completely inside sink radius, vol: %g \n", ThisTask, igas, vol);
       rho = All.CriticalNumberDensity*(2.408544e-24) / All.UnitDensity_in_cgs;
+      vol = vh;    
       break;
-    }
+    }  
   }
-  printf("Outer Density estimate: %g, NumNgb: %d  %d, nbnd:  %d\n", rho, ngb, SphP[igas].NumNgb, nbnd);
-
+  
   h = pow( 3.0*ngb*mass_j/(4.0*M_PI*rho), 1.0/3.0 );
+
+  printf(" ThisTask: %d, igas: %d  Estimated Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);	
+	
   hinv = 1.0/h;
   hinv3 = hinv*hinv*hinv;
   hinv4 = hinv3*hinv;
@@ -694,20 +702,33 @@ void CorrectByVol( int igas){
     SinkVel[1] = SphP[igas].sink_vely[ibnd];
     SinkVel[2] = SphP[igas].sink_velz[ibnd];
 
-    xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
-    xod = xo-d;
-    yo = sqrt(r1*r1 - xo*xo);
-    thm = atan(yo/xo);
-
-    vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ; 
+    if( d > r1-r2 ){ 	
+      xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
+      xod = xo-d;
+      vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;	    
+      thm = acos( (d-xo)/r2 );	    
+    }	    
+    else{ 
+      vol = vh;
+      thm = M_PI;	    
+    }	    
+      
     missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/vh );
 
     //print( "ThisTask : %d, ibnd: %d, ngb: %d, msngb: %d \n", ThisTask, ibnd, ngb, missing_ngb );
 
     for(int imiss=0; imiss<missing_ngb; imiss++ ){
-		  r =  ( (double)rand() / (double)RAND_MAX )*( r2 + r1 - d )  + d - r1 ;
-      phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
-      th = 2.0* ( (double)rand() / (double)RAND_MAX )*( thm ) - thm;
+      if( d > r1 && d > r1-r2 ) { //more than half outside 	    
+        r =  ( (double)rand() / (double)RAND_MAX )*( r2 + r1 - d )  + d - r1 ;	           	      
+      }	      
+      else if ( d < r1 && d > r1-r2 ) { //more than half inside
+	r =  ( (double)rand() / (double)RAND_MAX )*( r2 + d - r1 )  + r1 - d ;
+      }	      
+      else if ( d <= r1 - r2 ){	// completely inside    
+	r =  ( (double)rand() / (double)RAND_MAX )*r2;
+      }
+      th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * thm ;
+      phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;		
       rs = sqrt( d*d + r*r - 2.0*d*r*cos(th) );
       vesc = 2.0*All.G*m_sink/rs;
       KeplerL = All.G * m_sink * rs;
@@ -724,7 +745,7 @@ void CorrectByVol( int igas){
 
       th = acos( vec_d[2]/( sqrt(vec_d[0]*vec_d[0] + vec_d[1]*vec_d[1] + vec_d[2]*vec_d[2] )  ) );
       phi = atan2( vec_d[1],vec_d[0] );
-
+        
       ngb_pos[0] = rel_pos[0]*cos(th)*cos(phi) - rel_pos[1]*sin(phi) + rel_pos[2]*sin(th)*cos(phi) + SinkPos[0];
       ngb_pos[1] = rel_pos[0]*cos(th)*sin(phi) + rel_pos[1]*cos(phi) + rel_pos[2]*sin(th)*sin(phi) + SinkPos[1];
       ngb_pos[2] = -rel_pos[0]*sin(th) + rel_pos[2]*cos(th)  + SinkPos[2];
@@ -766,7 +787,7 @@ void CorrectByVol( int igas){
         endrun(453);
       }
 
-			u = r*hinv;
+      u = r*hinv;
       if(u < 0.5)
       {
         wk = hinv3 * (KERNEL_COEFF_1 + KERNEL_COEFF_2 * (u - 1) * u * u);
@@ -835,7 +856,8 @@ void CorrectByVol( int igas){
 	
     dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
     SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
-  }
+  } //bnd
+  printf(" ThisTask: %d, igas: %d  Corrected Density: %g\n", ThisTask, igas, rho); 	
 }
 #endif
 
