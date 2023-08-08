@@ -302,6 +302,7 @@ void identify_doomed_particles(void)
 		SphP[k].NBND++;
                 BNDList[N_BND] = k;
                 N_BND++;
+		printf("ThisTask:  %d, BND_id:  %d\n", ThisTask, k)      
 	     }
 	   }          
         
