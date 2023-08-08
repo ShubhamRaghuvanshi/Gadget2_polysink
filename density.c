@@ -642,62 +642,59 @@ void setdens(){
 void CorrectByVol( int igas){
 
   int nbnd = SphP[igas].NBND;
-  FLOAT r1,r2, Rs, Rh;
-  FLOAT v1, v2, Vs, Vh;
+  FLOAT r1,r2, zmin, zmax, ymax;
+  FLOAT v1, v2;
 
-  FLOAT d, xo, xod, yo, vol, th, phi, thm;
+  FLOAT d, xo, xod, vol, th, phi, thm;
   FLOAT dt_entr, rho, f_acc=1.0;
   FLOAT r,h,hinv,hinv3,hinv4,wk,dwk,u;
   FLOAT dx,dy,dz,dvx,dvy,dvz,divv,fac,dhsmlrho;
   //FLOAT vh = 4.0*r2*r2*r2/3.0;
   FLOAT mass_j = P[igas].Mass;
-  int ngb = (int) (4.0*M_PI*r2*r2*r2*SphP[igas].Density/(3.0*mass_j) ) ;
-  int missing_ngb,j ;
+  int ngb,  missing_ngb,j ;
   
   FLOAT SinkPos[3], SinkVel[3], m_sink, rs;
   FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
   FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
 
-  Rs = All.AccretionRadius;
-  Rh = SphP[igas].Hsml;
-  Vs = 4.0*Rs*Rs*Rs/3.0;
-  Vh = 4.0*Rh*Rh*Rh/3.0;
-
+  srand(time(0));
+   
+  // calculate the overlap first 
   r1 = All.AccretionRadius;
   r2 = SphP[igas].Hsml;
   v1 = 4.0*r1*r1*r1/3.0;
   v2 = 4.0*r2*r2*r2/3.0;	
-
-  srand(time(0));
-  rho=0; 
-  // First get correct smoothing length
+  ngb = (int) (4.0*M_PI*r2*r2*r2*SphP[igas].Density/(3.0*mass_j) ) ;
+  rho=0;	
+  
   for(int ibnd=0; ibnd<nbnd; ibnd++ ){
     d = SphP[igas].sinkdist[ibnd];
     xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
     xod = xo-d;
     vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;   
     if( r1>=r2 ){
-    if( d > r1-r2 ) {
-      rho = SphP[igas].Density/( 1.0 - f_acc*vh/vol );
-    }
-    }
+      if( d > r1-r2 ) {
+        rho = rho + SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
+      }
+      else {
+        printf("This should not happen\n");
+	endrun(899);      
+      }	    
+    }  //r1>=r2
     else {
-      vol = vh;
-      rho = All.CriticalNumberDensity*(2.408544e-24) / All.UnitDensity_in_cgs;
-      printf("ThisTask: %d, Particle %d, completely inside sink radius, vol: %g \n", ThisTask, igas, vol);
-      break;
-    }  
-  }
-  
+      if( d > r2-r1 ) {
+        rho = rho + SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
+      }
+      else {
+	vol = v1;      
+	rho = rho + SphP[igas].Density*( 1.0 + f_acc*vol/v2 );      
+      }	    
+    } //r1<r2
+  }	  
   h = pow( 3.0*ngb*mass_j/(4.0*M_PI*rho), 1.0/3.0 );
-
   printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, SphP[igas].Density ,ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);	
-
-  if( r1 < h || nbnd ==0 ){
-    printf("HSML > RS for particle: %d, %g, nbnd: %d\n", igas, r1-r2, nbnd);
-    endrun(1507);
-  }
 	
+  h =  SphP[igas].Hsml;
   hinv = 1.0/h;
   hinv3 = hinv*hinv*hinv;
   hinv4 = hinv3*hinv;
@@ -719,31 +716,59 @@ void CorrectByVol( int igas){
     SinkVel[1] = SphP[igas].sink_vely[ibnd];
     SinkVel[2] = SphP[igas].sink_velz[ibnd];
 
-    if( d > r1-r2 ){ 	
-      xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
-      xod = xo-d;
-      vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;	    
-      thm = acos( (d-xo)/r2 );	    
-    }	    
-    else{ 
-      vol = vh;
-      thm = M_PI;	    
-    }	    
-      
-    missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/vh );
+    xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
+    xod = xo-d;	  
+    vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;
+	  
+    if( r1 >= r2 ){
+      if( d > r1-r2 ) {	    
+        missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/v2 );
+        zmin = d - r1;
+	zmax = r2;	      
+      }
+      else {
+        printf("Why is this happening now\n");	
+	endrun(899);      
+      }	    
+    } 
+    else {
+      if( d > r2-r1 ) {	    
+        missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/v2 );
+	zmin = d - r1;
+	zmax = r2;	
+	thm = acos( (d-xo)/r2 );      
+      }
+      else {
+        vol = v1;
+	missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/v2 );
+	zmin = d-r1;      
+	zmax = d+r1;      
+      }	    	    
+    }	     
 
     //print( "ThisTask : %d, ibnd: %d, ngb: %d, msngb: %d \n", ThisTask, ibnd, ngb, missing_ngb );
 
     for(int imiss=0; imiss<missing_ngb; imiss++ ){
-      if( d > r1 && d > r1-r2 ) { //more than half outside 	    
-        r =  ( (double)rand() / (double)RAND_MAX )*( r2 + r1 - d )  + d - r1 ;	           	      
-      }	      
-      else if ( d < r1 && d > r1-r2 ) { //more than half inside
-	r =  ( (double)rand() / (double)RAND_MAX )*( r2 + d - r1 )  + r1 - d ;
-      }	      
-      else if ( d <= r1 - r2 ){	// completely inside    
-	r =  ( (double)rand() / (double)RAND_MAX )*r2;
+      r =  ( (double)rand() / (double)RAND_MAX )*(rmax - rmin)  + rmin ;
+      if( (r1>=r2 && d>=r1-r2) || (r1<=r2 && d>=r2-r1) ){
+        if( r >= d-xo ){
+	  ymax = sqrt( r1*r1 - r*r  );
+	  thm = asin( ymax/r2 );	
+	}
+	else{
+	  ymax = sqrt( r2*r2 - (r-d)*(r-d) );
+	  thm = asin( ymax/r2 );	
+	}      
       }
+      else if ( r1<r2 && d< r2-r1 ){
+        ymax = 	ymax = sqrt( r1*r1 - r*r  );
+	thm = asin( ymax/r2 );      
+      }
+      else{
+        printf("This shouldn't be happening \n");
+	endrun(899);      
+      }    
+	          
       th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * thm ;
       phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;		
       rs = sqrt( d*d + r*r - 2.0*d*r*cos(th) );
@@ -770,12 +795,24 @@ void CorrectByVol( int igas){
       rel_pos[0] = ngb_pos[0] - SinkPos[0];
       rel_pos[1] = ngb_pos[1] - SinkPos[1];
       rel_pos[2] = ngb_pos[2] - SinkPos[2];
-      
+
       temp_r = rel_pos[0]*rel_pos[0] + rel_pos[1]*rel_pos[1] + rel_pos[2]*rel_pos[2];
-      if( temp_r > r1*r1 || temp_r < (d-r1)*(d-r1) ){
-        printf("Position not correctly generated for %d, %g  %g \n", igas, temp_r - r1*r1, temp_r < (d-r1)*(d-r1) );  
-        endrun(101);
+      if( (r1>=r2 && d>=r1-r2) || (r1<=r2 && d>=r2-r1) ){
+        if( temp_r > r1*r1 || temp_r < (d-r1)*(d-r1) || r>r2 || r<d-r1 ){
+          printf("Position exeption 1 for %d \n", igas );  
+          endrun(101);
+        }
       }
+      else if ( r1<r2 && d< r2-r1 ){
+        if( temp_r > r1*r1 || r>d+r1 || r<d-r1  ){
+          printf("Position exeption 2 for %d, %g  %g \n", igas );  
+          endrun(101);
+        }
+      }
+      else{
+        printf("This shouldn't be happening 3\n");
+	endrun(899);      
+      }    
 
       ngb_vabs = 1e10;
       ngb_lsq = 1e10;
@@ -799,11 +836,6 @@ void CorrectByVol( int igas){
         ngb_vel[2] = rel_vel[2] + SinkVel[2]; 
       }
 
-      if(r < d - r1 || r > r2 ){
-        printf("Nothing Works !!!!!!!!!! \n");
-        endrun(453);
-      }
-
       u = r*hinv;
       if(u < 0.5)
       {
@@ -816,7 +848,7 @@ void CorrectByVol( int igas){
         dwk = hinv4 * KERNEL_COEFF_6 * (1.0 - u) * (1.0 - u);
       } //check this
 
-      if( wk < 0 || r<0){
+      if( wk < 0 || r<0 || u>1.0){
       printf("LOL YOU SUCK \n");
       endrun(454);
       }
@@ -855,8 +887,9 @@ void CorrectByVol( int igas){
     SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
   }
 
-  SphP[igas].Hsml = h;
-  SphP[igas].Density += rho;
+  SphP[igas].Density += rho;	   
+  SphP[igas].Hsml = pow( 3.0*ngb*mass_j/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );;
+  
   SphP[igas].DivVel += divv;
   SphP[igas].DhsmlDensityFactor += dhsmlrho;
   SphP[igas].Rot[0] += rotv[0];
