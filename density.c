@@ -652,7 +652,7 @@ void CorrectByVol( int igas){
   FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
   FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
 
-  if( r1 < r2 ){
+  if( r1 < r2 || nbnd == 0){
     printf("HSML > RS\n");
     endrun(1507);	  
   }
