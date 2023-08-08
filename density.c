@@ -749,7 +749,7 @@ void CorrectByVol( int igas){
     //print( "ThisTask : %d, ibnd: %d, ngb: %d, msngb: %d \n", ThisTask, ibnd, ngb, missing_ngb );
 
     for(int imiss=0; imiss<missing_ngb; imiss++ ){
-      r =  ( (double)rand() / (double)RAND_MAX )*(rmax - rmin)  + rmin ;
+      r =  ( (double)rand() / (double)RAND_MAX )*(zmax - zmin)  + zmin ;
       if( (r1>=r2 && d>=r1-r2) || (r1<=r2 && d>=r2-r1) ){
         if( r >= d-xo ){
 	  ymax = sqrt( r1*r1 - r*r  );
