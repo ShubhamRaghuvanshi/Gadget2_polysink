@@ -286,7 +286,7 @@ void identify_doomed_particles(void)
         num = ngb_treefind_variable(&pos[0], sinkrad,&startnode); /* find all particles inside the sink radius */
         for(n = 0; n < num; n++){
           k = Ngblist[n];
-
+         /*
           if(P[k].Type == 0 && P[k].Ti_endstep == All.Ti_Current && k < N_gas ){   
             for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
 	      seperation = sqrt(seperation);   
@@ -297,7 +297,7 @@ void identify_doomed_particles(void)
                 N_BND++;
 	     }
 	   }          
-        
+          */
           
           //We want to only mark particles for accretion if they haven't been marked previously
           if(P[k].Type == 0 && k < N_gas && (SphP[k].AccretionTarget ==0 || SphP[k].AccretionTarget==-2) && P[k].Ti_endstep == All.Ti_Current ){  /* only accrete gas particles! */
