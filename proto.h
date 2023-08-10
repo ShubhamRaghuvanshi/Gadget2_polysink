@@ -207,7 +207,6 @@ void RemoveParticles();
 void identify_doomed_particles(void);
 void destroy_doomed_particles(void);
 void setdens( );
-void CorrectByVol( int igas);
 int index_compare_key(const void *a, const void *b);
 #endif 
 
