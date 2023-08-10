@@ -629,17 +629,7 @@ int dens_compare_key(const void *a, const void *b)
 
 #ifdef SINK
 
-void setdens(){     
-
-  for(int i=0; i<N_gas; i++){
-    if( SphP[i].NBND > 0 ) {
-        printf("ThisTask: %d, Correcting for particle: %d with nbnd: %d\n", ThisTask, i, SphP[i].NBND);
-        CorrectByVol(i);
-    }   
-  }
-}
-
-void CorrectByVol( int igas){
+void setdens(){
 
   int startnode;
   int numsinks, numsinkstot;
