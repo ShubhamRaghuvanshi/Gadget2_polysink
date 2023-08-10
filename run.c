@@ -54,11 +54,6 @@ void run(void)
       domain_Decomposition();	/* do domain decomposition if needed */
 
   
-      compute_accelerations(0);  /* compute accelerations for 
-                                 * the particles that are to be advanced  
-                                 *                                  *                                  */
-
-
 #ifndef SINK
    		if(All.NumCurrentTiStep >=All.CriticalNumstep && All.NumCurrentTiStep%10 == 0 ){
                         double n_crit_cgs = 1e16, mh =  2.408544e-24;
@@ -181,6 +176,10 @@ void run(void)
       
       
 #endif
+
+      compute_accelerations(0);  /* compute accelerations for 
+                                 * the particles that are to be advanced  
+                                 *                                  *                                  *                                  */
 
 
 

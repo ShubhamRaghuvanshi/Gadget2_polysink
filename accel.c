@@ -67,15 +67,18 @@ void compute_accelerations(int mode)
 
       tstart = second();
       density();		/* computes density, and pressure */
-      #ifdef SINK	    
-      setdens();
-      #endif 	    
+   	    
       tend = second();
       All.CPU_Hydro += timediff(tstart, tend);
 
       tstart = second();
       force_update_hmax();      /* tell the tree nodes the new SPH smoothing length such that they are guaranteed to hold the correct max(Hsml) */
       tend = second();
+
+      #ifdef SINK
+      MPI_Barrier(MPI_COMM_WORLD);           
+      setdens();
+      #endif
       All.CPU_Predict += timediff(tstart, tend);
 
 

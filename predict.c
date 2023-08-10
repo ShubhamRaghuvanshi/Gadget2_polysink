@@ -189,7 +189,7 @@ void identify_doomed_particles(void)
   FLOAT seperation, relvel, relenergy, little_L, KeplerL2, sinkrad, sinkrad3;
   int num, startnode;
   int numsinks, numsinkstot;
-  int notestflag = 0;
+  int notestflag = 1;
 
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
@@ -291,14 +291,7 @@ void identify_doomed_particles(void)
             for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
 	      seperation = sqrt(seperation);   
               if(seperation <= sinkrad + SphP[k].Hsml){
-		SphP[k].sink_posx[SphP[k].NBND] = pos[0];
-                SphP[k].sink_posy[SphP[k].NBND] = pos[1];
-                SphP[k].sink_posz[SphP[k].NBND] = pos[2];
-
-                SphP[k].sink_velx[SphP[k].NBND] = vel[0];
-                SphP[k].sink_vely[SphP[k].NBND] = vel[1];
-                SphP[k].sink_velz[SphP[k].NBND] = vel[2];
-                
+                SphP[k].sinkid[SphP[k].NBND] = list_sink_ID[i];
 		SphP[k].NBND++;
                 BNDList[N_BND] = k;
                 N_BND++;
@@ -530,7 +523,7 @@ void destroy_doomed_particles(void)
       MPI_Allreduce(&spiny, &spinytot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); 
       MPI_Allreduce(&spinz, &spinztot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); 
       MPI_Barrier(MPI_COMM_WORLD);     
-      
+     
       for(j = N_gas;j < NumPart; j++){
         if(P[j].ID == target){
           //Add the count

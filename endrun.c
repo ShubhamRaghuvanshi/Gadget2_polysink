@@ -29,16 +29,16 @@ void endrun(int ierr)
       printf("task %d: endrun called with an error level of %d\n\n\n", ThisTask, ierr);
       fflush(stdout);
 
- 			#ifdef SINK
-    	char filename[100];
-    	sprintf(filename, "gaslist_%d.txt", ThisTask);
-    	FILE *gaslist;
-    	gaslist = fopen(filename,"w");
-    	for(int i=0; i< NumPart + N_accrete; i++){
-    		fprintf(gaslist, "%d	%d 	%d 	%d 	%d\n", i, NumPart, N_accrete, P[i].ID, P[i].Type);
-    	}
-    	fclose(gaslist);
-    	#endif
+// 			#ifdef SINK
+//    	char filename[100];
+//    	sprintf(filename, "gaslist_%d.txt", ThisTask);
+//    	FILE *gaslist;
+//    	gaslist = fopen(filename,"w");
+//    	for(int i=0; i< NumPart + N_accrete; i++){
+//    		fprintf(gaslist, "%d	%d 	%d 	%d 	%d\n", i, NumPart, N_accrete, P[i].ID, P[i].Type);
+//    	}
+//    	fclose(gaslist);
+//    	#endif
 
 
 #ifdef DEBUG

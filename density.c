@@ -641,56 +641,140 @@ void setdens(){
 
 void CorrectByVol( int igas){
 
-  int nbnd = SphP[igas].NBND;
+  int startnode;
+  int numsinks, numsinkstot;
+  FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
+  FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
+  FLOAT *local_sink_mass;
+  FLOAT *list_sink_posx, *list_sink_posy, *list_sink_posz;
+  FLOAT *list_sink_velx, *list_sink_vely, *list_sink_velz;
+  FLOAT *list_sink_mass;
+  FLOAT *pos, *vel;
+  FLOAT SinkPos[3], SinkVel[3];
+  int i,j,k,n;
+
+  //physical variables
   FLOAT r1,r2, zmin, zmax, ymax;
   FLOAT v1, v2;
 
-  FLOAT d, xo, xod, vol, th, phi, thm;
+  FLOAT d, zo, zod, vol, th, phi, thm;
   FLOAT dt_entr, rho, f_acc=1.0;
   FLOAT r,h,hinv,hinv3,hinv4,wk,dwk,u;
   FLOAT dx,dy,dz,dvx,dvy,dvz,divv,fac,dhsmlrho;
   //FLOAT vh = 4.0*r2*r2*r2/3.0;
   FLOAT mass_j = P[igas].Mass;
-  int ngb,  missing_ngb,j ;
+  int missing_ngb ;
   
-  FLOAT SinkPos[3], SinkVel[3], m_sink, rs;
-  FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
+
+  FLOAT m_sink, rs;
+  FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL2;
   FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
 
   srand(time(0));
-   
-  // calculate the overlap first 
-  r1 = All.AccretionRadius;
-  r2 = SphP[igas].Hsml;
-  v1 = 4.0*r1*r1*r1/3.0;
-  v2 = 4.0*r2*r2*r2/3.0;	
-  ngb = (int) (4.0*M_PI*r2*r2*r2*SphP[igas].Density/(3.0*mass_j) ) ;
-  rho=0;	
   
-  for(int ibnd=0; ibnd<nbnd; ibnd++ ){
-    d = SphP[igas].sinkdist[ibnd];
-    xo = ( (r1*r1 - r2*r2)/d + d)/2.0;
-    xod = xo-d;
-    vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;   
-    if( r1>=r2 ){
-      if( d > r1-r2 ) {
-        rho = rho + SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
-      }
-      else {
-        printf("This should not happen\n");
-	endrun(899);      
-      }	    
-    }  //r1>=r2
-    else {
-      if( d > r2-r1 ) {
-        rho = rho + SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
-      }
-      else {
-	vol = v1;      
-	rho = rho + SphP[igas].Density*( 1.0 + f_acc*vol/v2 );      
-      }	    
-    } //r1<r2
+  numsinks = NumPart - N_gas; 
+  MPI_Allreduce(&numsinks, &numsinkstot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
+  MPI_Barrier(MPI_COMM_WORLD);
+ 	  
+  local_sink_posx = malloc(sizeof(double) * numsinkstot);
+  local_sink_posy = malloc(sizeof(double) * numsinkstot);  
+  local_sink_posz = malloc(sizeof(double) * numsinkstot); 
+  local_sink_velx = malloc(sizeof(double) * numsinkstot);
+  local_sink_vely = malloc(sizeof(double) * numsinkstot);  
+  local_sink_velz = malloc(sizeof(double) * numsinkstot);  
+  local_sink_mass = malloc(sizeof(double) * numsinkstot);     
+  list_sink_posx = malloc(sizeof(double) * numsinkstot * NTask);
+  list_sink_posy = malloc(sizeof(double) * numsinkstot * NTask);  
+  list_sink_posz = malloc(sizeof(double) * numsinkstot * NTask); 
+  list_sink_velx = malloc(sizeof(double) * numsinkstot * NTask);
+  list_sink_vely = malloc(sizeof(double) * numsinkstot * NTask);  
+  list_sink_velz = malloc(sizeof(double) * numsinkstot * NTask); 
+  list_sink_mass = malloc(sizeof(double) * numsinkstot * NTask);  
+     
+
+  for(i = 0; i < numsinkstot; i++) local_sink_mass[i] = -1;
+  
+  for(i = 0; i < numsinks; i++){
+    local_sink_posx[i] = P[i+N_gas].Pos[0];
+    local_sink_posy[i] = P[i+N_gas].Pos[1];    
+    local_sink_posz[i] = P[i+N_gas].Pos[2];
+    local_sink_velx[i] = P[i+N_gas].Vel[0];
+    local_sink_vely[i] = P[i+N_gas].Vel[1];    
+    local_sink_velz[i] = P[i+N_gas].Vel[2];
+    local_sink_mass[i] = P[i+N_gas].Mass; 
+  }  
+
+  MPI_Allgather(local_sink_posx, numsinkstot, MPI_DOUBLE, list_sink_posx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_posy, numsinkstot, MPI_DOUBLE, list_sink_posy, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
+  MPI_Allgather(local_sink_posz, numsinkstot, MPI_DOUBLE, list_sink_posz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_velx, numsinkstot, MPI_DOUBLE, list_sink_velx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_vely, numsinkstot, MPI_DOUBLE, list_sink_vely, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
+  MPI_Allgather(local_sink_velz, numsinkstot, MPI_DOUBLE, list_sink_velz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
+  MPI_Allgather(local_sink_mass, numsinkstot, MPI_DOUBLE, list_sink_mass, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD); 
+  
+  for(i = 0; i < numsinkstot * NTask; i++){	 /* go through all the sink particles (From all processors) and find boundary gas */
+    if(list_sink_mass[i] > 0){
+      Postemp[0] = list_sink_posx[i];
+      Postemp[1] = list_sink_posy[i];
+      Postemp[2] = list_sink_posz[i];
+      Veltemp[0] = list_sink_velx[i];
+      Veltemp[1] = list_sink_vely[i];
+      Veltemp[2] = list_sink_velz[i];            
+      pos = Postemp;
+      vel = Veltemp;
+      
+      startnode = All.MaxPart;
+      sinkrad = All.AccretionRadius;       
+	
+      do
+      {
+        num = ngb_treefind_variable(&pos[0], 2.0*sinkrad,&startnode); /* find all particles inside the sink radius */
+        for(n = 0; n < num; n++){
+          k = Ngblist[n];
+
+          if(P[k].Type == 0 && P[k].Ti_endstep == All.Ti_Current && k < N_gas ){   
+            for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
+	      seperation = sqrt(seperation);   
+              if(seperation <= sinkrad + SphP[k].Hsml){
+                printf("ThisTask: %d, correcting for %d\n", ThisTask, k);
+                r1 = All.AccretionRadius;
+                r2 = SphP[igas].Hsml;
+                d  = seperation;
+
+                v1 = 4.0*r1*r1*r1/3.0;
+                v2 = 4.0*r2*r2*r2/3.0;        
+                rho=0;        
+                zo = ( (r1*r1 - r2*r2)/d + d)/2.0;
+                xod = xo-d;
+                vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;
+   
+                if( r1>=r2 ){
+                  if( d >= r1-r2 ) {
+                    rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
+                  }
+                  else {
+                    printf("ThisTask: %d,  should not happen %d %g, %g, %g, %g \n", ThisTask, igas, r1, r2, d , d-r1+r2);
+                    endrun(899);
+                  }
+                }  //r1>=r2
+                else {
+                  if( d > r2-r1 ) {
+                    rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
+                  }
+                  else {
+                    vol = v1;
+                    rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
+                  }
+                } //r1<r2
+                 h = pow( 3.0*ngb*mass_j/(4.0*M_PI*rho), 1.0/3.0 );
+                 printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, SphP[igas].Density ,ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);
+	      } //seperation
   }	  
+	    } //type=0
+	  } //num          
+        }while(startnode>=0);
+    // calculate the overlap first  
   h = pow( 3.0*ngb*mass_j/(4.0*M_PI*rho), 1.0/3.0 );
   printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, SphP[igas].Density ,ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);	
 	
@@ -721,10 +805,8 @@ void CorrectByVol( int igas){
     vol = 2.0*r1*r1*r1/3.0 - r1*r1*xo + xo*xo*xo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*xod - xod*xod*xod/3.0 ;
 	  
     if( r1 >= r2 ){
-      if( d > r1-r2 ) {	    
-        missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/v2 );
-        zmin = d - r1;
-	zmax = r2;	      
+      if( d >= r1-r2 ) {	    
+        missing_ngb =  round( SphP[igas].NumNgb * f_acc * vol/v2 );
       }
       else {
         printf("Why is this happening now\n");	
@@ -732,58 +814,51 @@ void CorrectByVol( int igas){
       }	    
     } 
     else {
-      if( d > r2-r1 ) {	    
-        missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/v2 );
-	zmin = d - r1;
-	zmax = r2;	
-	thm = acos( (d-xo)/r2 );      
+      if( d >= r2-r1 ) {	    
+        missing_ngb =  round(SphP[igas].NumNgb * f_acc * vol/v2 );
       }
       else {
         vol = v1;
-	missing_ngb =  SphP[igas].NumNgb * round(  f_acc * vol/v2 );
-	zmin = d-r1;      
-	zmax = d+r1;      
+	missing_ngb = round( SphP[igas].NumNgb * f_acc * vol/v2 );     
       }	    	    
     }	     
 
-    //print( "ThisTask : %d, ibnd: %d, ngb: %d, msngb: %d \n", ThisTask, ibnd, ngb, missing_ngb );
+printf( "ThisTask : %d, igas: %d, ngb: %d, msngb: %d, r1: %g, r2: %g, r1-r2: %g, d: %g \n", ThisTask, igas, ngb, missing_ngb, r1, r2, r1-r2,d );
+//printf( "ThisTask : %d, igas: %d, ngb: %d, msngb: %d, vol: %g, r1: %g, r2: %g, vol/v2: %g \n", ThisTask, igas, ngb, missing_ngb, vol, v1, v2, vol/v2 );
 
     for(int imiss=0; imiss<missing_ngb; imiss++ ){
-      r =  ( (double)rand() / (double)RAND_MAX )*(zmax - zmin)  + zmin ;
-      if( (r1>=r2 && d>=r1-r2) || (r1<=r2 && d>=r2-r1) ){
-        if( r >= d-xo ){
-	  ymax = sqrt( r1*r1 - r*r  );
-	  thm = asin( ymax/r2 );	
-	}
-	else{
-	  ymax = sqrt( r2*r2 - (r-d)*(r-d) );
-	  thm = asin( ymax/r2 );	
-	}      
-      }
-      else if ( r1<r2 && d< r2-r1 ){
-        ymax = 	ymax = sqrt( r1*r1 - r*r  );
-	thm = asin( ymax/r2 );      
-      }
-      else{
-        printf("This shouldn't be happening \n");
-	endrun(899);      
-      }    
-	          
-      th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * thm ;
-      phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;		
-      rs = sqrt( d*d + r*r - 2.0*d*r*cos(th) );
-      vesc = 2.0*All.G*m_sink/rs;
-      KeplerL = All.G * m_sink * rs;
-      
-      //coordinate where d is along z axis and sink is origin
-      rel_pos[0] = r*sin(th)*cos(phi);
-      rel_pos[1] = r*sin(th)*sin(phi);
-      rel_pos[2] = r*cos(th) - d; 
 
+      if( (r1>=r2 && d>= r1-r2) || (r1<=r2 && d>=r2-r1)  ){
+        zmin = abs(d-r2);
+        zmax = r1;
+        r =  ( (double)rand() / (double)RAND_MAX )*(zmax - zmin)  + zmin ;
+        xo = ( (r*r -r2*r2)/d + d)/2.0;
+        thm = acos(xo/r);
+        th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * thm ;
+        phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
+        rel_pos[0] = r*sin(th)*cos(phi);
+        rel_pos[1] = r*sin(th)*sin(phi);
+        rel_pos[2] = r*cos(th) ; 
+        rs = r;
+      }    
+      else if(r1 < r2 && d< r2-r1)  {
+        r =  ( (double)rand() / (double)RAND_MAX )*r1;
+        th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * M_PI ;
+        phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
+        rel_pos[0] = r*sin(th)*cos(phi);
+        rel_pos[1] = r*sin(th)*sin(phi);
+        rel_pos[2] = r*cos(th) ;
+        rs = r;
+      } 
+      else{
+       printf("ThisTask: %d this is impossible, id: %d\n", ThisTask, igas);
+       endrun(999);
+      }  
+ 
       //transform to system coordinates 
-      vec_d[0] = SinkPos[0] - P[igas].Pos[0] ;
-      vec_d[1] = SinkPos[1] - P[igas].Pos[1] ;
-      vec_d[2] = SinkPos[2] - P[igas].Pos[2] ;
+      vec_d[0] = P[igas].Pos[0] - SinkPos[0];
+      vec_d[1] = P[igas].Pos[1] - SinkPos[1];
+      vec_d[2] = P[igas].Pos[2] - SinkPos[2];
 
       th = acos( vec_d[2]/( sqrt(vec_d[0]*vec_d[0] + vec_d[1]*vec_d[1] + vec_d[2]*vec_d[2] )  ) );
       phi = atan2( vec_d[1],vec_d[0] );
@@ -798,15 +873,15 @@ void CorrectByVol( int igas){
 
       temp_r = rel_pos[0]*rel_pos[0] + rel_pos[1]*rel_pos[1] + rel_pos[2]*rel_pos[2];
       if( (r1>=r2 && d>=r1-r2) || (r1<=r2 && d>=r2-r1) ){
-        if( temp_r > r1*r1 || temp_r < (d-r1)*(d-r1) || r>r2 || r<d-r1 ){
-          printf("Position exeption 1 for %d \n", igas );  
+        if( temp_r > r1*r1 || temp_r < (d-r2)*(d-r2) ){
+          printf("ThisTask: %d Position exeption 1 for %d, temp_r: %g, r1: %g, d-r1: %g \n", ThisTask, igas, temp_r, r1*r1, (d-r1)*(d-r1) );  
           endrun(101);
         }
       }
       else if ( r1<r2 && d< r2-r1 ){
-        if( temp_r > r1*r1 || r>d+r1 || r<d-r1  ){
-          printf("Position exeption 2 for %d \n", igas );  
-          endrun(101);
+        if( temp_r > r1*r1  ){
+          printf("ThisTask: %d Position exeption 2 for %d, temp_r: %g, r1: %g \n", ThisTask, igas, temp_r, r1*r1 );
+          endrun(111);
         }
       }
       else{
@@ -814,10 +889,13 @@ void CorrectByVol( int igas){
 	endrun(899);      
       }    
 
+      vesc = 2.0*All.G*m_sink/rs;
+      KeplerL = All.G * m_sink * rs;
       ngb_vabs = 1e10;
       ngb_lsq = 1e10;
 
       while ( ngb_vabs >= vesc || ngb_lsq >= KeplerL ){
+    
         rel_vel[0] = (2.0*( (double)rand() / (double)RAND_MAX ) -1.0)* vesc ;
         rel_vel[1] = (2.0*( (double)rand() / (double)RAND_MAX ) -1.0)* vesc ;
         rel_vel[2] = (2.0*( (double)rand() / (double)RAND_MAX ) -1.0)* vesc ;
@@ -825,6 +903,7 @@ void CorrectByVol( int igas){
           ngb_lsq  += pow(  rel_pos[(j+1)%3]*rel_vel[(j+2)%3] - rel_pos[(j+2)%3]*rel_vel[(j+1)%3] ,2); 
           ngb_vabs += (ngb_vel[j] - SinkVel[j])*(ngb_vel[j] - SinkVel[j]);  
         }
+     //   printf("ThisTask: %d, Correcting vel for %d, rs: %g, vesc: %g, Kl: %d, G: %g, m_sink vabs: %g, labs: %g\n", ThisTask, igas, rs, vesc, KeplerL, ngb_vabs, ngb_lsq);
       }
       if ( ngb_vabs >= vesc || ngb_lsq >= KeplerL ){
         printf("Incorrect velocity generated for neigbour \n");
@@ -908,7 +987,9 @@ void CorrectByVol( int igas){
   dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
   SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
 	
-  printf(" ThisTask: %d, igas: %d  Corrected Density: %g\n", ThisTask, igas, rho); 	
+  printf(" ThisTask: %d, igas: %d, density correction: %d,   Corrected Density: %g\n", ThisTask, igas, rho, SphP[igas].Density); 	
+  MPI_Barrier(MPI_COMM_WORLD);
+  endrun(901);
 }
 #endif
 
