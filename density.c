@@ -896,7 +896,7 @@ void setdens(){
 							                          SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
 							dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
 							SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
-							printf(" ThisTask: %d, igas: %d, density correction: %d,   Corrected Density: %g\n", ThisTask, igas, rho, SphP[igas].Density); 
+							printf(" ThisTask: %d, igas: %d, density correction: %g,   Corrected Density: %g\n", ThisTask, igas, rho, SphP[igas].Density); 
 						} //seperation
 					} //type=0
 	      } //num          
