@@ -879,7 +879,7 @@ void setdens(){
 								SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
 							}
 							SphP[igas].Density += rho;	   
-							SphP[igas].Hsml = pow( 3.0*ngb*mass_j/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );
+							SphP[igas].Hsml = pow( 3.0*SphP[igas].NumNgb*m_gas/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );
 							
 							SphP[igas].DivVel += divv;
 							SphP[igas].DhsmlDensityFactor += dhsmlrho;
