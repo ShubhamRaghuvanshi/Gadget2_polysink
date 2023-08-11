@@ -830,7 +830,7 @@ extern struct hydrodata_in
   int   Index;
 
   #ifdef SINK
-  int NBND;
+  int BNDPARTICLE;
   int AccretionTarget;
   #endif 
 
