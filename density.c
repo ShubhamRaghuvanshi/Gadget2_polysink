@@ -655,7 +655,7 @@ void setdens(){
   
 
   FLOAT m_sink, m_gas, rs;
-  FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL2;
+  FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
   FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
 
   srand(time(0));
@@ -749,7 +749,7 @@ void setdens(){
                 }
               }  //r1>=r2
               else {
-                if( d > r2-r1 ) {
+                if( d >= r2-r1 ) {
                   rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
 		         			missing_ngb =  round( SphP[igas].NumNgb * f_acc * vol/v2 );	  
                 }
@@ -760,8 +760,8 @@ void setdens(){
                 }
               } //r1<r2
               h = pow( 3.0*ngb*m_gas/(4.0*M_PI*rho), 1.0/3.0 );    
-              printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d  %g, Hsml: %g  %g, nbnd:  %d\n", ThisTask, igas, rho, SphP[igas].Density ,ngb, SphP[igas].NumNgb, h, SphP[igas].Hsml, nbnd);
-              printf( "ThisTask : %d, igas: %d, ngb: %d, msngb: %d, r1: %g, r2: %g, r1-r2: %g, d: %g \n", ThisTask, igas, ngb, missing_ngb, r1, r2, r1-r2,d ); 
+              printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d, Hsml: %g  %g, msngb: %d\n", ThisTask, igas, rho, SphP[igas].Density , SphP[igas].NumNgb, h, SphP[igas].Hsml, missing_ngb);
+              //printf( "ThisTask : %d, igas: %d, ngb: %d, msngb: %d, r1: %g, r2: %g, r1-r2: %g, d: %g \n", ThisTask, igas, ngb, missing_ngb, r1, r2, r1-r2,d ); 
 		 					h =  SphP[igas].Hsml;
               hinv = 1.0/h;
               hinv3 = hinv*hinv*hinv;
@@ -796,7 +796,7 @@ void setdens(){
 								rel_pos[0] = rs*sin(th)*cos(phi);
 								rel_pos[1] = rs*sin(th)*sin(phi);
 								rel_pos[2] = rs*cos(th) - d; 
-                r = sqrt( rs*rs + d*d - 2.0*rs*d*cos(theta) ); 
+                r = sqrt( rs*rs + d*d - 2.0*rs*d*cos(th) ); 
 
                 //transform to system coordinates 
                 vec_d[0] = P[igas].Pos[0] - SinkPos[0];
@@ -854,9 +854,9 @@ void setdens(){
 									printf("LOL YOU SUCK \n");
 									endrun(454);
 								}
-							 	rho += mass_j * wk;
-							 	dhsmlrho += -mass_j * (NUMDIMS * hinv * wk + u * dwk);
-								fac = mass_j * dwk / r;
+							 	rho += m_gas * wk;
+							 	dhsmlrho += -m_gas * (NUMDIMS * hinv * wk + u * dwk);
+								fac = m_gas * dwk / r;
 	
 								dvx = P[igas].Vel[0] - ngb_vel[0];
 								dvy = P[igas].Vel[1] - ngb_vel[1];
@@ -879,7 +879,7 @@ void setdens(){
 								SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
 							}
 							SphP[igas].Density += rho;	   
-							SphP[igas].Hsml = pow( 3.0*ngb*mass_j/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );;
+							SphP[igas].Hsml = pow( 3.0*ngb*mass_j/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );
 							
 							SphP[igas].DivVel += divv;
 							SphP[igas].DhsmlDensityFactor += dhsmlrho;
@@ -891,12 +891,12 @@ void setdens(){
 							SphP[igas].DivVel /= SphP[igas].Density;
 							SphP[igas].DhsmlDensityFactor = 1.0 / (1.0 + SphP[igas].Hsml * SphP[igas].DhsmlDensityFactor / (NUMDIMS * SphP[igas].Density) );
 							SphP[igas].CurlVel = sqrt(SphP[igas].Rot[0] * SphP[igas].Rot[0] +
-							SphP[igas].Rot[1] * SphP[igas].Rot[1] +
-							SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
+							                          SphP[igas].Rot[1] * SphP[igas].Rot[1] +
+							                          SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
 							dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
 							SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
+							printf(" ThisTask: %d, igas: %d, density correction: %d,   Corrected Density: %g\n", ThisTask, igas, rho, SphP[igas].Density); 
 						} //seperation
-						printf(" ThisTask: %d, igas: %d, density correction: %d,   Corrected Density: %g\n", ThisTask, igas, rho, SphP[igas].Density); 
 					} //type=0
 	      } //num          
       }while(startnode>=0);
