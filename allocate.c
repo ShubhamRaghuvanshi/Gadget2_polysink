@@ -22,7 +22,6 @@ void allocate_commbuffers(void)
 
   #ifdef SINK
   AccreteList = malloc(10000 * sizeof(int));
-  BNDList = malloc(10000 * sizeof(int));
   #endif 
 
 
