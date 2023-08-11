@@ -26,11 +26,10 @@ int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 
 #ifdef SINK
 int *AccreteList;        /*!< Buffer to hold indices of particles to be accreted */
-int *BNDList;
 int AccNum=0;
 int AccNumAll=0;
 int N_accrete;
-int N_sink, N_BND=0;
+int N_sink;
 int SinkFlag=0;
 FLOAT TotMassInSinks=0;
 #endif 
