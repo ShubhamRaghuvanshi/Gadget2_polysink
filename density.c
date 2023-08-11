@@ -640,6 +640,7 @@ void setdens(){
   FLOAT *list_sink_velx, *list_sink_vely, *list_sink_velz;
   FLOAT *list_sink_mass;
   FLOAT *pos, *vel;
+  FLOAT sinkrad;	
   FLOAT SinkPos[3], SinkVel[3];
   int i,j,k,n, igas;
 
