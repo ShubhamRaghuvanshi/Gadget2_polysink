@@ -212,10 +212,8 @@ void identify_doomed_particles(void)
   
   //printf("starting accretion, rank %d, %d accretors\n",ThisTask,NumPart-N_gas);
   AccNum = 0;
-  N_BND=0;
   for(int igas=0; igas<N_gas; igas++){
     SphP[igas].AccretionTarget =0;
-    SphP[igas].NBND = 0;
   }  
 	
   numsinks = NumPart - N_gas; 
