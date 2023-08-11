@@ -708,8 +708,8 @@ void setdens(){
       SinkVel[0] = list_sink_velx[i];
       SinkVel[1] = list_sink_vely[i];
       SinkVel[2] = list_sink_velz[i];            
-      pos = Postemp;
-      vel = Veltemp;
+      pos = SinkPos;
+      vel = SinkVel;
       
       startnode = All.MaxPart;
       sinkrad = All.AccretionRadius;       
