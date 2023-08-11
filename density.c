@@ -632,7 +632,7 @@ int dens_compare_key(const void *a, const void *b)
 void setdens(){
 
   int startnode;
-  int numsinks, numsinkstot;
+  int numsinks, numsinkstot, num;
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
   FLOAT *local_sink_mass;
