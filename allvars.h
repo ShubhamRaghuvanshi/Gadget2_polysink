@@ -606,6 +606,7 @@ extern struct sph_particle_data
 
   #ifdef SINK
   int AccretionTarget; 
+  int BNDPARTICLE;
   #endif
 
   #ifdef VARPOLYTROPE
