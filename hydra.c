@@ -393,7 +393,7 @@ void hydro_evaluate(int target, int mode)
   double h_j, dwk_j, r, r2, u, hfc_visc;
 
   #ifdef SINK
-  int nbnd=0;
+  int bndparticle=0;
   #endif
 
   #ifndef NOVISCOSITYLIMITER
