@@ -759,7 +759,7 @@ void setdens(){
 		    					missing_ngb =  round( SphP[igas].NumNgb * f_acc * vol/v2 );  
                 }
               } //r1<r2
-              h = pow( 3.0*ngb*m_gas/(4.0*M_PI*rho), 1.0/3.0 );    
+              h = pow( 3.0*SphP[igas].NumNgb*m_gas/(4.0*M_PI*rho), 1.0/3.0 );    
               printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %d, Hsml: %g  %g, msngb: %d\n", ThisTask, igas, rho, SphP[igas].Density , SphP[igas].NumNgb, h, SphP[igas].Hsml, missing_ngb);
               //printf( "ThisTask : %d, igas: %d, ngb: %d, msngb: %d, r1: %g, r2: %g, r1-r2: %g, d: %g \n", ThisTask, igas, ngb, missing_ngb, r1, r2, r1-r2,d ); 
 		 					h =  SphP[igas].Hsml;
