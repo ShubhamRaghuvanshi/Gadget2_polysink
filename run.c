@@ -159,7 +159,7 @@ void run(void)
 					
 					TotMassInSinks  = AccNumAll*P[0].Mass; 
 					
-					printf("ThisTask: %d, NumPart:%d, N_gas:%d, N_sinks:%d, AccNumAll: %d, TotN_gas:%d, TotN_accrete:%d, All.TotN_sink:%d, TotNumPart:%d, TotMassInSinks: %g, AccretionRadius: %g \n", ThisTask, NumPart, N_gas, N_sink, AccNumAll, All.TotN_gas,   All.TotN_accrete , All.TotN_sink,  All.TotN_gas+All.TotN_sink, TotMassInSinks, All.AccretionRadius);				
+					printf("ThisTask: %d, Step: %d, NumPart:%d, N_gas:%d, N_sinks:%d, AccNumAll: %d, TotN_gas:%d, TotN_accrete:%d, All.TotN_sink:%d, TotNumPart:%d, TotMassInSinks: %g, AccretionRadius: %g \n", ThisTask, All.NumCurrentTiStep, NumPart, N_gas, N_sink, AccNumAll, All.TotN_gas,   All.TotN_accrete , All.TotN_sink,  All.TotN_gas+All.TotN_sink, TotMassInSinks, All.AccretionRadius);				
 			 
 			 }
        MPI_Barrier(MPI_COMM_WORLD);
@@ -845,7 +845,7 @@ void create_sink(){
 			P[NumPart -1 - numsinks]   = temp_p;
 			SphP[NumPart-1 - numsinks] = temp_sph;      
 
-			printf("ThisTask = %d,  moving sink from %d to %d, sink ID: %d, numsinklocal: %d, numsinkstot: %d, N_gas: %d, NumPart: %d\n", ThisTask, index, NumPart -1 - numsinks, P[NumPart -1 - numsinks].ID, numsinks, numsinkstot, N_gas, NumPart);
+			printf("ThisTask = %d, Step: %d moving sink from %d to %d, sink ID: %d, numsinklocal: %d, numsinkstot: %d, N_gas: %d, NumPart: %d\n", ThisTask,All.NumCurrentTiStep, index, NumPart -1 - numsinks, P[NumPart -1 - numsinks].ID, numsinks, numsinkstot, N_gas, NumPart);
   	  N_gas--;
 		}
 	} //thistask

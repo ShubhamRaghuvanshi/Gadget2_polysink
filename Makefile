@@ -35,7 +35,7 @@ OPT   +=  -DNOSTOP_WHEN_BELOW_MINTIMESTEP
 OPT   +=  -DHAVE_HDF5  
 OPT   +=  -DH5_USE_16_API
 OPT   +=  -DOUTPUTPOTENTIAL
-#OPT   +=  -DOUTPUTACCELERATION
+OPT   +=  -DOUTPUTACCELERATION
 #OPT   +=  -DOUTPUTCHANGEOFENTROPY
 #OPT   +=  -DOUTPUTTIMESTEP
 
@@ -79,15 +79,15 @@ OPT += -DVARPOLYTROPE
 
 #--------------------------------------- Adjust settings for target computer
 
-CC       =  mpicc
+CC       =  mpiicc
 OPTIMIZE =  -O3 -Wall
-GSL_INCL =  -I/c12scratch/CAPS_J/depend/gsl_install/include
-GSL_LIBS =  -L/c12scratch/CAPS_J/depend/gsl_install/lib
-FFTW_INCL=  -I/c12scratch/CAPS_J/depend/fftw_install/include
-FFTW_LIBS=  -L/c12scratch/CAPS_J/depend/fftw_install/lib
-MPICHLIB =  -L/c12scratch/CAPS_J/depend/mpi_install/lib
-HDF5INCL =  -I/c12scratch/apps/hdf5/1.8.21/include
-HDF5LIB  =  -L/c12scratch/apps/hdf5/1.8.21/lib -lhdf5 -lz
+GSL_INCL =  -I/u/sraghu/software/GSL_install/include
+GSL_LIBS =  -L/u/sraghu/software/GSL_install/lib
+FFTW_INCL=  -I/u/sraghu/software/FFTW2_install/include
+FFTW_LIBS=  -L/u/sraghu/software/FFTW2_install/lib
+MPICHLIB =  -L/mpcdf/soft/SLE_15/packages/x86_64/intel_oneapi/2022.3/mpi/2021.7.1/lib
+HDF5INCL =  -I/u/sraghu/software/HDF5_install/include
+HDF5LIB  =  -L/u/sraghu/software/HDF5_install/lib -lhdf5 -lz
 
 OPTIONS =  $(OPTIMIZE) $(OPT) -std=gnu99
 

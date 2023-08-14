@@ -186,10 +186,10 @@ void identify_doomed_particles(void)
   FLOAT EffectiveCutoff;
 #endif
   int n, i, j, k;
-  FLOAT seperation, relvel, relenergy, little_L, KeplerL2, sinkrad, sinkrad3;
+  FLOAT seperation, vdotr,relvel, relenergy, little_L, KeplerL2, sinkrad, sinkrad3;
   int num, startnode;
   int numsinks, numsinkstot;
-  int notestflag = 1;
+  int notestflag = 0;
 
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
@@ -207,7 +207,7 @@ void identify_doomed_particles(void)
   
   int verbose = 0;
   if(ThisTask == 0 ){
-  	printf("starting accretion...... \n");
+  	printf("starting accretion...... STep: %d\n", All.NumCurrentTiStep);
   }
   
   //printf("starting accretion, rank %d, %d accretors\n",ThisTask,NumPart-N_gas);
@@ -311,7 +311,10 @@ void identify_doomed_particles(void)
               
               
               relenergy = .5*relvel - All.G*list_sink_mass[i]/seperation;
- 							
+ 	      vdotr =  (P[k].Vel[0]-vel[0])*(P[k].Pos[0]-pos[0]);
+              vdotr += (P[k].Vel[1]-vel[1])*(P[k].Pos[1]-pos[1]);
+              vdotr += (P[k].Vel[2]-vel[2])*(P[k].Pos[2]-pos[2]);
+
  							//if(verbose) 
           //    printf("Particle ID %d is within accretion radius of sink ID %d from %d           %f               %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,relenergy);
               
@@ -620,7 +623,7 @@ void destroy_doomed_particles(void)
   //printf("done with accretion, rank %d\n",ThisTask); 
 
   if(ThisTask == 0 ){
-  	printf("done with accretion...... \n");
+  	printf("Step: %d, done with accretion...... \n", All.NumCurrentTiStep);
   }
 }
 

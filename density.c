@@ -635,29 +635,33 @@ void setdens(){
   int numsinks, numsinkstot, num;
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
+  FLOAT *local_sink_spinx, *local_sink_spiny, *local_sink_spinz;
   FLOAT *local_sink_mass;
   FLOAT *list_sink_posx, *list_sink_posy, *list_sink_posz;
   FLOAT *list_sink_velx, *list_sink_vely, *list_sink_velz;
+  FLOAT *list_sink_spinx, *list_sink_spiny, *list_sink_spinz;
   FLOAT *list_sink_mass;
   FLOAT *pos, *vel;
   FLOAT sinkrad, seperation;	
-  FLOAT SinkPos[3], SinkVel[3];
-  int i,j,k,n, igas;
+  FLOAT SinkPos[3], SinkVel[3], SinkSpin[3];
+  int i,j,k,n, igas, jgas;
 
   //physical variables
   FLOAT r1,r2, zmin, zmax, ymax;
   FLOAT v1, v2;
 
-  FLOAT d, zo, zod, vol, th, phi, thm;
-  FLOAT dt_entr, rho, f_acc=1.0;
+  FLOAT d, zo, zod, vol, th, phi, thm, zcut;
+  FLOAT dt_entr, rho;
   FLOAT r,h,hinv,hinv3,hinv4,wk,dwk,u;
   FLOAT dx,dy,dz,dvx,dvy,dvz,divv,fac,dhsmlrho;
   int missing_ngb ;
-  
+  float costheta;
 
   FLOAT m_sink, m_gas, rs;
-  FLOAT ngb_pos[3], ngb_vel[3], ngb_vabs, ngb_lsq ,vesc, KeplerL;
-  FLOAT rel_pos[3], rel_vel[3], vec_d[3], rotv[3], temp_r;
+  FLOAT ngb_vabs, ngb_lsq ,vesc, KeplerL, ngb_L[3];
+  FLOAT sys_pos[3], sys_vel[3], vec_d[3], rotv[3], vec_rs[3], vec_vs[3], temp_r;
+
+  FLOAT vabs_min, lsq_min, vsx_min, vsy_min, vsz_min;
 
   srand(time(0));
   
@@ -670,14 +674,25 @@ void setdens(){
   local_sink_posz = malloc(sizeof(double) * numsinkstot); 
   local_sink_velx = malloc(sizeof(double) * numsinkstot);
   local_sink_vely = malloc(sizeof(double) * numsinkstot);  
-  local_sink_velz = malloc(sizeof(double) * numsinkstot);  
+  local_sink_velz = malloc(sizeof(double) * numsinkstot);
+
+  local_sink_spinx = malloc(sizeof(double) * numsinkstot);
+  local_sink_spiny = malloc(sizeof(double) * numsinkstot);
+  local_sink_spinz = malloc(sizeof(double) * numsinkstot);
+
+
   local_sink_mass = malloc(sizeof(double) * numsinkstot);     
   list_sink_posx = malloc(sizeof(double) * numsinkstot * NTask);
   list_sink_posy = malloc(sizeof(double) * numsinkstot * NTask);  
   list_sink_posz = malloc(sizeof(double) * numsinkstot * NTask); 
   list_sink_velx = malloc(sizeof(double) * numsinkstot * NTask);
   list_sink_vely = malloc(sizeof(double) * numsinkstot * NTask);  
-  list_sink_velz = malloc(sizeof(double) * numsinkstot * NTask); 
+  list_sink_velz = malloc(sizeof(double) * numsinkstot * NTask);
+
+  list_sink_spinx = malloc(sizeof(double) * numsinkstot * NTask);
+  list_sink_spiny = malloc(sizeof(double) * numsinkstot * NTask);
+  list_sink_spinz = malloc(sizeof(double) * numsinkstot * NTask);
+ 
   list_sink_mass = malloc(sizeof(double) * numsinkstot * NTask);  
      
   for(i = 0; i < numsinkstot; i++) local_sink_mass[i] = -1;
@@ -689,15 +704,24 @@ void setdens(){
     local_sink_velx[i] = P[i+N_gas].Vel[0];
     local_sink_vely[i] = P[i+N_gas].Vel[1];    
     local_sink_velz[i] = P[i+N_gas].Vel[2];
+    local_sink_spinx[i] = P[i+N_gas].Spin[0];
+    local_sink_spiny[i] = P[i+N_gas].Spin[1];
+    local_sink_spinz[i] = P[i+N_gas].Spin[2];
     local_sink_mass[i] = P[i+N_gas].Mass; 
   }  
 
-	MPI_Allgather(local_sink_posx, numsinkstot, MPI_DOUBLE, list_sink_posx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_posx, numsinkstot, MPI_DOUBLE, list_sink_posx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_posy, numsinkstot, MPI_DOUBLE, list_sink_posy, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
   MPI_Allgather(local_sink_posz, numsinkstot, MPI_DOUBLE, list_sink_posz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_velx, numsinkstot, MPI_DOUBLE, list_sink_velx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_vely, numsinkstot, MPI_DOUBLE, list_sink_vely, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
   MPI_Allgather(local_sink_velz, numsinkstot, MPI_DOUBLE, list_sink_velz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
+
+  MPI_Allgather(local_sink_spinx, numsinkstot, MPI_DOUBLE, list_sink_spinx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_spiny, numsinkstot, MPI_DOUBLE, list_sink_spiny, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_spinz, numsinkstot, MPI_DOUBLE, list_sink_spinz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+
+
   MPI_Allgather(local_sink_mass, numsinkstot, MPI_DOUBLE, list_sink_mass, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD); 
   
@@ -709,6 +733,10 @@ void setdens(){
       SinkVel[0] = list_sink_velx[i];
       SinkVel[1] = list_sink_vely[i];
       SinkVel[2] = list_sink_velz[i];            
+      SinkSpin[0] = list_sink_spinx[i];
+      SinkSpin[1] = list_sink_spiny[i];
+      SinkSpin[2] = list_sink_spinz[i];
+
       pos = SinkPos;
       vel = SinkVel;
       
@@ -725,79 +753,132 @@ void setdens(){
           	for(seperation = 0,j = 0; j < 3; j++) seperation += (P[igas].Pos[j]-pos[j]) * (P[igas].Pos[j]-pos[j]);  
 					  seperation = sqrt(seperation);   
             if(seperation <= sinkrad + SphP[igas].Hsml){
-              printf("ThisTask: %d, correcting for %d\n", ThisTask, igas);
-              r1 = All.AccretionRadius;
+              printf("ThisTask: %d, Step: %d,  correcting for %d, sep: %g, rs+h: %g\n", ThisTask, All.NumCurrentTiStep, igas, seperation, sinkrad + SphP[igas].Hsml);
+              r1 = sinkrad;
               r2 = SphP[igas].Hsml;
               d  = seperation;
-							m_sink = list_sink_mass[i]; 
-							m_gas = P[igas].Mass;
+	      m_sink = list_sink_mass[i]; 
+	      m_gas = P[igas].Mass;
 	
-	            v1 = 4.0*r1*r1*r1/3.0;
-	            v2 = 4.0*r2*r2*r2/3.0;        
-	            rho=0;        
-	            zo = ( (r1*r1 - r2*r2)/d + d)/2.0;
-	            zod = zo-d;
-	            vol = 2.0*r1*r1*r1/3.0 - r1*r1*zo + zo*zo*zo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*zod - zod*zod*zod/3.0 ;
+	      v1 = 4.0*r1*r1*r1/3.0;
+	      v2 = 4.0*r2*r2*r2/3.0;        
+	      rho=0;        
+	      zo = ( (r1*r1 - r2*r2)/d + d)/2.0;
+	      zod = zo-d;
+	      vol = 2.0*r1*r1*r1/3.0 - r1*r1*zo + zo*zo*zo/3.0  + 2.0*r2*r2*r2/3.0 + r2*r2*zod - zod*zod*zod/3.0 ;
+              ymax = sqrt(r1*r1 - zo*zo);
+	      if( (r1>=r2 && d>= r1-r2) || (r1<=r2 && d>=r2-r1)  ){
+                rho =  SphP[igas].Density*( 1.0 + vol/v2 );
+		missing_ngb =  round( SphP[igas].NumNgb  * vol/v2 );
+	        for(int in=0; in<num; in++){
+	          jgas = Ngblist[in];
+		  for(rs = 0,j = 0; j < 3; j++) 
+	            rs += (P[jgas].Pos[j]-pos[j]) * (P[jgas].Pos[j]-pos[j]);
+                  rs = sqrt(rs);
+		  zcut = ( (rs*rs - r2*r2)/d + d)/2.0;
+		  thm = fabs(acos(zcut/rs)) ;
+		  th = fabs(acos( (P[jgas].Pos[2] - pos[2]) /rs )); 
+                  if(rs > d-r2 && rs < r1 && th <= thm  )
+                    missing_ngb--;			    
+	        }	  
+              }
+              else if( r1 < r2 && d< r2-r1  ){
+	        vol = v1;
+                //rho =  SphP[igas].Density*( 1.0 + vol/v2 );
+                missing_ngb =  round( SphP[igas].NumNgb * vol/v2 );
+                for(int in=0; in<num; in++){
+                  jgas = Ngblist[in];
+                  for(rs = 0,j = 0; j < 3; j++)
+                    rs += (P[jgas].Pos[j]-pos[j]) * (P[jgas].Pos[j]-pos[j]);
+                  rs = sqrt(rs);
+                  if(rs<r1 )
+                    missing_ngb--;
+	        }
+              }
+	      else if ( r1>r2 && d<r1-r2 ){
+		missing_ngb = round( SphP[igas].NumNgb);
 
-							if( r1>=r2 ){
-              	if( d >= r1-r2 ) {
-                  rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
-		     					missing_ngb =  round( SphP[igas].NumNgb * f_acc * vol/v2 );	  
+		vec_d[0] = P[igas].Pos[0] - SinkPos[0];
+                vec_d[1] = P[igas].Pos[1] - SinkPos[1];
+                vec_d[2] = P[igas].Pos[2] - SinkPos[2];
+
+		for(int in=0; in<num; in++){
+                  jgas = Ngblist[in];
+                  vec_rs[0] = P[jgas].Pos[0] - SinkPos[0];
+                  vec_rs[1] = P[jgas].Pos[1] - SinkPos[0];
+                  vec_rs[2] = P[jgas].Pos[2] - SinkPos[0];
+                  rs = sqrt( vec_rs[0]*vec_rs[0] + vec_rs[1]*vec_rs[1] + vec_rs[2]*vec_rs[2] );
+                  costheta = (vec_rs[0]*vec_d[0]+vec_rs[1]*vec_d[1]+vec_rs[2]*vec_d[2])/(rs*d);   
+                  if( rs*rs + d*d - 2.0*rs*d*costheta  <r2*r2 )
+                    missing_ngb--;
                 }
-                else {
-                  printf("ThisTask: %d,  should not happen %d %g, %g, %g, %g \n", ThisTask, igas, r1, r2, d , d-r1+r2);
-                  endrun(899);
-                }
-              }  //r1>=r2
+	      }
               else {
-                if( d >= r2-r1 ) {
-                  rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
-		         			missing_ngb =  round( SphP[igas].NumNgb * f_acc * vol/v2 );	  
-                }
-                else {
-                  vol = v1;
-                  rho =  SphP[igas].Density*( 1.0 + f_acc*vol/v2 );
-		    					missing_ngb =  round( SphP[igas].NumNgb * f_acc * vol/v2 );  
-                }
-              } //r1<r2
+                printf("ThisTask: %d,  should not happen %d %g, %g, %g, %g, NumNgb: %g \n", ThisTask, igas, r1, r2, d , d-r1+r2, SphP[igas].NumNgb );
+                endrun(899);
+              }
+
+	      if(missing_ngb > 0){ 
               h = pow( 3.0*SphP[igas].NumNgb*m_gas/(4.0*M_PI*rho), 1.0/3.0 );    
-              printf(" ThisTask: %d, igas: %d  Estimated: %g,  Density: %g, NumNgb: %g, Hsml: %g  %g, msngb: %d\n", ThisTask, igas, rho, SphP[igas].Density , SphP[igas].NumNgb, h, SphP[igas].Hsml, missing_ngb);
-              //printf( "ThisTask : %d, igas: %d, ngb: %d, msngb: %d, r1: %g, r2: %g, r1-r2: %g, d: %g \n", ThisTask, igas, ngb, missing_ngb, r1, r2, r1-r2,d ); 
-		 					h =  SphP[igas].Hsml;
+              printf(" ThisTask: %d, igas: %d, NumNgb: %g, msngb: %d, m_sink: %g, m_gas: %g, vol/v2: %g\n", ThisTask, igas, SphP[igas].NumNgb, missing_ngb, m_sink, m_gas, vol/v2);
+             // printf( "ThisTask : %d, igas: %d, r1: %g, r2: %g, r1-r2: %g, d: %g \n", ThisTask, igas, r1, r2, r1-r2,d ); 
+	      h =  SphP[igas].Hsml;
               hinv = 1.0/h;
               hinv3 = hinv*hinv*hinv;
               hinv4 = hinv3*hinv;
 									
-     	        rho = 0;
+     	      rho = 0;
       	      dhsmlrho =0;
-        	    divv=0;
-          	  rotv[0]=0;
-            	rotv[1]=0;
-		 					rotv[2]=0;  
+              divv=0;
+              rotv[0]=0;
+              rotv[1]=0;
+              rotv[2]=0;  
 									
               for(int imiss=0; imiss<missing_ngb; imiss++ ){
                 if( (r1>=r2 && d>= r1-r2) || (r1<=r2 && d>=r2-r1)  ){
-                  zmin = abs(d-r2);
-									zmax = r1;
-									rs =  ( (double)rand() / (double)RAND_MAX )*(zmax - zmin)  + zmin ;
-									zo = ( (rs*rs -r2*r2)/d + d)/2.0;
-									thm = acos(zo/r);
-									th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * thm ;
-									phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
+                  zmin = d-r2;
+		  if (zmin < 0){
+		    zmin = -zmin;
+		  }	  
+	          zmax = r1;
+		  rs =  ( (double)rand() / (double)RAND_MAX )*(zmax - zmin)  + zmin ;
+		  zo = ( (rs*rs -r2*r2)/d + d)/2.0;
+		  thm = acos(zo/rs);
+		  th =  ( (double)rand() / (double)RAND_MAX ) * thm ;
+		  phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
+		  //printf( "Condition 1, ThisTask : %d, igas: %d, r1: %g, r2: %g, r1-r2: %g, d-r2: %g, thm: %g, th: %g, zmin: %g, zmax: %g \n", ThisTask, igas, r1, r2, r1-r2,d-r2, thm, th, zmin, zmax );
                 }    
-								else if(r1 < r2 && d< r2-r1)  {
-								  rs =  ( (double)rand() / (double)RAND_MAX )*r1;
-								  th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * M_PI ;
-								  phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
-								} 
-								else{
-								  printf("ThisTask: %d this is impossible, id: %d\n", ThisTask, igas);
-								  endrun(999);
-								}  
-								rel_pos[0] = rs*sin(th)*cos(phi);
-								rel_pos[1] = rs*sin(th)*sin(phi);
-								rel_pos[2] = rs*cos(th) - d; 
+		else if(r1 < r2 && d< r2-r1)  {
+		  zmin = 0 ;
+	          zmax = r1;	  
+		  thm = M_PI;
+	          rs =  ( (double)rand() / (double)RAND_MAX )*r1;
+	          th = 2.0* ( ( (double)rand() / (double)RAND_MAX ) - 1.0) * M_PI ;
+		  phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
+		  //printf( "Condition 2, ThisTask : %d, igas: %d, r1: %g, r2: %g, r1-r2: %g, d: %g, thm: %g, th: %g, zmin: %g, zmax: %g \n", ThisTask, igas, r1, r2, r1-r2,d, thm, th, zmin, zmax );
+	        }
+	        else if ( r1>r2 && d<r1-r2 ){
+                  zmin = d-r2;
+		  zmax = d+r2;
+                  rs =  ( (double)rand() / (double)RAND_MAX )*(zmax - zmin)  + zmin ;
+                  zo = ( (rs*rs -r2*r2)/d + d)/2.0;
+		  thm = acos(zo/rs);
+                  th =  ( (double)rand() / (double)RAND_MAX ) * thm ;
+		  phi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;
+
+		}	
+		else{
+	          printf("ThisTask: %d this is impossible, id: %d\n", ThisTask, igas);
+		  endrun(999);
+		} 
+
+                vec_rs[0] = rs*sin(th)*cos(phi);
+		vec_rs[1] = rs*sin(th)*sin(phi);
+                vec_rs[2] = rs*cos(th);
+
                 r = sqrt( rs*rs + d*d - 2.0*rs*d*cos(th) ); 
+		 
+		//printf("ThisTask: %d, IGAS: %d, vec_rs[0]:, %g, vec_rs[1]: %g, vec_rs[2]: %g, rs: %g, th: %g, phi: %g, zmin: %g, zmax: %g, u: %g\n ", ThisTask, igas, vec_rs[0], vec_rs[1], vec_rs[2], rs, th, phi, zmin, zmax, r/r2); 
 
                 //transform to system coordinates 
                 vec_d[0] = P[igas].Pos[0] - SinkPos[0];
@@ -806,105 +887,157 @@ void setdens(){
 
                 th = acos( vec_d[2]/( sqrt(vec_d[0]*vec_d[0] + vec_d[1]*vec_d[1] + vec_d[2]*vec_d[2] )  ) );
                 phi = atan2( vec_d[1],vec_d[0] );
-        
-                dx = rel_pos[0]*cos(th)*cos(phi) - rel_pos[1]*sin(phi) + rel_pos[2]*sin(th)*cos(phi) + SinkPos[0];
-                dy = rel_pos[0]*cos(th)*sin(phi) + rel_pos[1]*cos(phi) + rel_pos[2]*sin(th)*sin(phi) + SinkPos[1];
-                dz = -rel_pos[0]*sin(th) + rel_pos[2]*cos(th)  + SinkPos[2];
 
-								temp_r = dx*dx + dy*dy + dz*dz;
-								if( temp_r > r2*r2 || temp_r < (d-r1)*(d-r1) ){
-									printf("ThisTask: %d Position exeption 1 for %d, temp_r: %g, r2: %g, d-r1: %g \n", ThisTask, igas, temp_r, r2*r2, (d-r1)*(d-r1) );  
-									endrun(101);
-								}
-        		    vesc = 2.0*All.G*m_sink/rs;
-						    KeplerL = All.G * m_sink * rs;
-						    ngb_vabs = 1e10;
-						    ngb_lsq = 1e10;
+                sys_pos[0] = vec_rs[0]*cos(th)*cos(phi) - vec_rs[1]*sin(phi) + vec_rs[2]*sin(th)*cos(phi);
+                sys_pos[1] = vec_rs[0]*cos(th)*sin(phi) + vec_rs[1]*cos(phi) + vec_rs[2]*sin(th)*sin(phi);
+                sys_pos[2] = -vec_rs[0]*sin(th) + vec_rs[2]*cos(th);
 
-      					while ( ngb_vabs >= vesc || ngb_lsq >= KeplerL ){
-						      rel_vel[0] = (2.0*( (double)rand() / (double)RAND_MAX ) -1.0)* vesc ;
-						      rel_vel[1] = (2.0*( (double)rand() / (double)RAND_MAX ) -1.0)* vesc ;
-						      rel_vel[2] = (2.0*( (double)rand() / (double)RAND_MAX ) -1.0)* vesc ;
-						      for(ngb_lsq = 0, ngb_vabs=0, j = 0;j < 3; j++) {
-						        ngb_lsq  += pow(  rel_pos[(j+1)%3]*rel_vel[(j+2)%3] - rel_pos[(j+2)%3]*rel_vel[(j+1)%3] ,2); 
-						        ngb_vabs += (ngb_vel[j] - SinkVel[j])*(ngb_vel[j] - SinkVel[j]);  
-						      }
-     							//   printf("ThisTask: %d, Correcting vel for %d, rs: %g, vesc: %g, Kl: %d, G: %g, m_sink vabs: %g, labs: %g\n", ThisTask, igas, rs, vesc, KeplerL, ngb_vabs, ngb_lsq);
-      					}
-						    if ( ngb_vabs >= vesc || ngb_lsq >= KeplerL ){
-						      printf("Incorrect velocity generated for neigbour \n");
-						      endrun(100);
-						    }
-						    else{
-						      ngb_vel[0] = rel_vel[0] + SinkVel[0];
-						      ngb_vel[1] = rel_vel[1] + SinkVel[1];
-						      ngb_vel[2] = rel_vel[2] + SinkVel[2]; 
-						    }
-								u = r*hinv;
-								if(u < 0.5)
-								{
-									wk = hinv3 * (KERNEL_COEFF_1 + KERNEL_COEFF_2 * (u - 1) * u * u);
-									dwk = hinv4 * u * (KERNEL_COEFF_3 * u - KERNEL_COEFF_4);
-								}
-								else
-								{
-									wk = hinv3 * KERNEL_COEFF_5 * (1.0 - u) * (1.0 - u) * (1.0 - u);
-									dwk = hinv4 * KERNEL_COEFF_6 * (1.0 - u) * (1.0 - u);
-								} //check this
-								if( wk < 0 || r<0 || u>1.0){
-									printf("LOL YOU SUCK \n");
-									endrun(454);
-								}
-							 	rho += m_gas * wk;
-							 	dhsmlrho += -m_gas * (NUMDIMS * hinv * wk + u * dwk);
-								fac = m_gas * dwk / r;
-	
-								dvx = P[igas].Vel[0] - ngb_vel[0];
-								dvy = P[igas].Vel[1] - ngb_vel[1];
-								dvz = P[igas].Vel[2] - ngb_vel[2];
-								divv -= fac * (dx * dvx + dy * dvy + dz * dvz);	
+		temp_r = sys_pos[0]*sys_pos[0] + sys_pos[1]*sys_pos[1] + sys_pos[2]*sys_pos[2];
+
+                //printf("ThisTask: %d, IGAS: %d, s_pos[0]:, %g, s_pos[1]: %g, s_pos[2]: %g, t_r: %g, r1: %g, d-r2: %g\n ", ThisTask, igas, sys_pos[0], sys_pos[1], sys_pos[2], temp_r, r1*r1, (d-r2)*(d-r2));
+
+		if( temp_r > r1*r1 || temp_r < (d-r2)*(d-r2) ){
+		  printf("ThisTask: %d Position exeption 1 for %d, temp_r: %g, r2: %g, d-r1: %g \n", ThisTask, igas, temp_r, r1*r1, (d-r2)*(d-r2) );  
+		    endrun(101);
+		}
+		sys_pos[0] = sys_pos[0] + SinkPos[0];
+		sys_pos[1] = sys_pos[1] + SinkPos[1];
+		sys_pos[2] = sys_pos[2] + SinkPos[2];
+
+                vesc = sqrt(2.0*All.G*m_sink/rs);
+		KeplerL = All.G * m_sink * rs;
+		ngb_vabs = 1e10;
+		ngb_lsq = 1e10;
+
+		vabs_min = ngb_vabs;
+		lsq_min = ngb_lsq;
+                int itr=0;
+		float vdotr = 100.0;
+		float vth, vphi;
+		costheta=-10.0;
+      		while ( ngb_vabs >= vesc || ngb_lsq >= KeplerL || costheta < 0 || vdotr > 0 ){
+	          ngb_vabs = ( (double)rand() / (double)RAND_MAX ) * vesc;
+                  vth = ( (double)rand() / (double)RAND_MAX )*M_PI;
+                  vphi = ( (double)rand() / (double)RAND_MAX )*2.0*M_PI;   		  
+		  vec_vs[0] = ngb_vabs*sin(vth)*cos(vphi);
+		  vec_vs[1] = ngb_vabs*sin(vth)*sin(vphi);
+		  vec_vs[2] = ngb_vabs*cos(vth);
+		  ngb_L[0] = vec_rs[1]*vec_vs[2] - vec_rs[2]*vec_vs[1];
+                  ngb_L[1] = vec_rs[2]*vec_vs[0] - vec_rs[0]*vec_vs[2];
+		  ngb_L[2] = vec_rs[0]*vec_vs[1] - vec_rs[1]*vec_vs[0];
+            
+		  for(ngb_lsq = 0, ngb_vabs=0, j = 0;j < 3; j++) {
+		    ngb_lsq  += ngb_L[j]*ngb_L[j];
+		  //  ngb_vabs += vec_vs[j]*vec_vs[j]; 
+		  }
+		  //ngb_vabs = sqrt(ngb_vabs);
+		  vdotr = vec_rs[0]*vec_vs[0] + vec_rs[1]*vec_vs[1] + vec_rs[2]*vec_vs[2];
+	          costheta = (SinkSpin[0]*ngb_L[0] + SinkSpin[1]*ngb_L[1] + SinkSpin[2]*ngb_L[2])/sqrt(ngb_lsq);
+                  costheta = costheta/sqrt(SinkSpin[0]*SinkSpin[0] + SinkSpin[1]*SinkSpin[1] + SinkSpin[2]*SinkSpin[2]  );
+		  if( vabs_min > ngb_vabs && lsq_min > ngb_lsq && costheta > 0 && vdotr < 0 ){ 
+		    vabs_min = ngb_vabs;
+		    lsq_min = ngb_lsq;
+		    vsx_min = vec_vs[0];
+                    vsy_min = vec_vs[1];
+		    vsz_min = vec_vs[2];
+		  }   
+     		  //printf("ThisTask: %d, itr: %d, Correcting vel for %d, vesc:, %g, KL: %g, ngb_vabs: %g, ngb_lsq: %g \n", ThisTask, itr, igas, vesc, KeplerL, ngb_vabs, ngb_lsq );
+		  itr++;
+		  if(itr >= 2000 )
+	            break;		   
+      		}
+		if ( ngb_vabs >= vesc || ngb_lsq >= KeplerL || costheta < 0 || vdotr > 0 ){
+		  printf("ThisTask: %d, igas: %d, Velocity not converged, v-vesc: %g, l-lkep: %g, costheta: %g, vdotr: %g \n", ThisTask, igas, vabs_min-vesc, lsq_min-KeplerL, costheta, vdotr);
+		  vec_vs[0] = vsx_min;
+		  vec_vs[1] = vsy_min;
+		  vec_vs[2] = vsz_min;
+		  endrun(100);
+		}
+		else{
+		//  printf("ThisTask:%d, igas: %d, Velocity assigned in itr: %d, costheta: %g, vabs-vesc: %g, l-KepL: %g \n", ThisTask, igas, itr, costheta, ngb_vabs-vesc, ngb_lsq-KeplerL );
+		}
 		
-								rotv[0] += fac * (dz * dvy - dy * dvz);
-								rotv[1] += fac * (dx * dvz - dz * dvx);
-								rotv[2] += fac * (dy * dvx - dx * dvy);        
-    					} //msngb		      
-							//undo the final operations
-						  SphP[igas].DivVel  = SphP[igas].DivVel*SphP[igas].Density;
-							SphP[igas].CurlVel = SphP[igas].CurlVel*SphP[igas].Density;
+		sys_vel[0] = vec_vs[0]*cos(th)*cos(phi) - vec_vs[1]*sin(phi) + vec_vs[2]*sin(th)*cos(phi) + SinkVel[0];
+                sys_vel[1] = vec_vs[0]*cos(th)*sin(phi) + vec_vs[1]*cos(phi) + vec_vs[2]*sin(th)*sin(phi) + SinkVel[1];
+                sys_vel[2] = -vec_vs[0]*sin(th) + vec_vs[2]*cos(th)  + SinkVel[2];
+		
+
+		u = r*hinv;
+		if(u < 0.5)
+		{
+		  wk = hinv3 * (KERNEL_COEFF_1 + KERNEL_COEFF_2 * (u - 1) * u * u);
+		  dwk = hinv4 * u * (KERNEL_COEFF_3 * u - KERNEL_COEFF_4);
+		}
+		else
+		{
+		  wk = hinv3 * KERNEL_COEFF_5 * (1.0 - u) * (1.0 - u) * (1.0 - u);
+		  dwk = hinv4 * KERNEL_COEFF_6 * (1.0 - u) * (1.0 - u);
+		} //check this
+		if( wk < 0 || r<0 || u>1.0 ){
+		  printf("LOL YOU SUCK, wk: %g, r: %g, u: %g \n", wk, r, u);
+		  endrun(454);
+		}
+		rho += m_gas * wk;
+		dhsmlrho += -m_gas * (NUMDIMS * hinv * wk + u * dwk);
+		fac = m_gas * dwk / r;
+	
+		dx = P[igas].Pos[0] - sys_pos[0];
+	        dy = P[igas].Pos[0] - sys_pos[1];
+	        dz = P[igas].Pos[2] - sys_pos[2];	
+			
+		dvx = P[igas].Vel[0] - sys_vel[0];
+		dvy = P[igas].Vel[1] - sys_vel[1];
+		dvz = P[igas].Vel[2] - sys_vel[2];
+
+	        divv -= fac * (dx * dvx + dy * dvy + dz * dvz);	
+		
+		rotv[0] += fac * (dz * dvy - dy * dvz);
+		rotv[1] += fac * (dx * dvz - dz * dvx);
+		rotv[2] += fac * (dy * dvx - dx * dvy);        
+    	      } //msngb		      
+
+	      printf("ThisTask: %d, igas: %d, Oldvalues: div: %g, curl: %g, dhsml: %g, hsml: %g, dens: %g, pres: %g, rot[2]: %g\n", ThisTask, igas, SphP[igas].DivVel, SphP[igas].CurlVel, SphP[igas].DhsmlDensityFactor, SphP[igas].Hsml, SphP[igas].Density, SphP[igas].Pressure, SphP[igas].Rot[2] );
+
+	      //undo the final operations
+	      SphP[igas].DivVel  = SphP[igas].DivVel*SphP[igas].Density;
+	      SphP[igas].CurlVel = SphP[igas].CurlVel*SphP[igas].Density;							
+	      if( SphP[igas].DhsmlDensityFactor == 0 ){
+	        printf("Houston, we got a problem\n");
+		endrun(212);
+	      }
+	      else{
+	        SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
+	      }
+
+	      //correct
+	      SphP[igas].Density += rho;	   
+	      SphP[igas].Hsml = pow( 3.0*SphP[igas].NumNgb*m_gas/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );						
+	      SphP[igas].DivVel += divv;
+	      SphP[igas].DhsmlDensityFactor += dhsmlrho;
+	      SphP[igas].Rot[0] += rotv[0];
+	      SphP[igas].Rot[1] += rotv[1];
+	      SphP[igas].Rot[2] += rotv[2];
 							
-							if( SphP[igas].DhsmlDensityFactor == 0 ){
-						 		printf("Houston, we got a problem\n");
-								endrun(212);
-							}
-							else{
-								SphP[igas].DhsmlDensityFactor = (1.0/SphP[igas].DhsmlDensityFactor - 1.0)*NUMDIMS*SphP[igas].Density/SphP[igas].Hsml;   
-							}
-							SphP[igas].Density += rho;	   
-							SphP[igas].Hsml = pow( 3.0*SphP[igas].NumNgb*m_gas/(4.0*M_PI*SphP[igas].Density), 1.0/3.0 );
-							
-							SphP[igas].DivVel += divv;
-							SphP[igas].DhsmlDensityFactor += dhsmlrho;
-							SphP[igas].Rot[0] += rotv[0];
-							SphP[igas].Rot[1] += rotv[1];
-							SphP[igas].Rot[2] += rotv[2];
-							
-							//redo the final operations
-							SphP[igas].DivVel /= SphP[igas].Density;
-							SphP[igas].DhsmlDensityFactor = 1.0 / (1.0 + SphP[igas].Hsml * SphP[igas].DhsmlDensityFactor / (NUMDIMS * SphP[igas].Density) );
-							SphP[igas].CurlVel = sqrt(SphP[igas].Rot[0] * SphP[igas].Rot[0] +
-							                          SphP[igas].Rot[1] * SphP[igas].Rot[1] +
-							                          SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
-							dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
-							SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
-							printf(" ThisTask: %d, igas: %d, density correction: %g,   Corrected Density: %g\n", ThisTask, igas, rho, SphP[igas].Density); 
-						} //seperation
-					} //type=0
-	      } //num          
+	      //redo the final operations
+	      SphP[igas].DivVel /= SphP[igas].Density;
+	      SphP[igas].DhsmlDensityFactor = 1.0 / (1.0 + SphP[igas].Hsml * SphP[igas].DhsmlDensityFactor / (NUMDIMS * SphP[igas].Density) );
+	      SphP[igas].CurlVel = sqrt(SphP[igas].Rot[0] * SphP[igas].Rot[0] +
+				        SphP[igas].Rot[1] * SphP[igas].Rot[1] +
+					SphP[igas].Rot[2] * SphP[igas].Rot[2]) / SphP[igas].Density;
+	      dt_entr = (All.Ti_Current - (P[igas].Ti_begstep + P[igas].Ti_endstep) / 2) * All.Timebase_interval;
+	      SphP[igas].Pressure = (SphP[igas].Entropy + SphP[igas].DtEntropy * dt_entr) * pow(SphP[igas].Density, GAMMA);
+	      
+	      printf(" ThisTask: %d, igas: %d, Correction density: %g, divv: %g, rot[0]: %g, rot[1]: %g, rot[2]: %g\n", ThisTask, igas, rho, divv/SphP[igas].Density, rotv[0]/SphP[igas].Density, rotv[1]/SphP[igas].Density, rotv[2]/SphP[igas].Density ); 
+	      printf("ThisTask: %d, igas: %d, Newvalues: div: %g, curl: %g, dhsml: %g, hsml: %g, dens: %g, pres: %g, rot[2]: %g\n", ThisTask, igas, SphP[igas].DivVel, SphP[igas].CurlVel, SphP[igas].DhsmlDensityFactor, SphP[igas].Hsml, SphP[igas].Density, SphP[igas].Pressure, SphP[igas].Rot[2] );
+              } //msngb>0
+  	    } //seperation
+	  } //type=0
+	} //num          
       }while(startnode>=0);
-		} //m_sink > 0 		
-	}// numsinktot				
-	MPI_Barrier(MPI_COMM_WORLD);
-	endrun(901);
+    } //m_sink > 0 		
+  }// numsinktot				
+//  printf("ThisTask: %d, Reached end of density correction\n", ThisTask);
+  MPI_Barrier(MPI_COMM_WORLD);
 }
 #endif
 

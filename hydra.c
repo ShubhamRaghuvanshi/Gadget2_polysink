@@ -402,10 +402,10 @@ void hydro_evaluate(int target, int mode)
 
   if(mode == 0)
     {
-      #ifdef SINK
-      if(All.TotN_sink > 0)
-        nbnd = SphP[target].NBND;       
-      #endif     
+//      #ifdef SINK
+//      if(All.TotN_sink > 0)
+//        nbnd = SphP[target].NBND;       
+//      #endif     
       pos = P[target].Pos;
       vel = SphP[target].VelPred;
       h_i = SphP[target].Hsml;
@@ -431,10 +431,10 @@ void hydro_evaluate(int target, int mode)
   }
   else
     {
-      #ifdef SINK
-      if(All.TotN_sink > 0)
-        nbnd = HydroDataGet[target].NBND;       
-      #endif     
+ //     #ifdef SINK
+ //     if(All.TotN_sink > 0)
+ //       nbnd = HydroDataGet[target].NBND;       
+ //     #endif     
       pos = HydroDataGet[target].Pos;
       vel = HydroDataGet[target].Vel;
       h_i = HydroDataGet[target].Hsml;
@@ -459,9 +459,9 @@ void hydro_evaluate(int target, int mode)
   acc[0] = acc[1] = acc[2] = dtEntropy = 0;
   maxSignalVel = 0;
 
-  #ifdef SINK
-    if( All.TotN_sink == 0 || ( All.TotN_sink > 0 && nbnd == 0 )) {
-  #endif 
+  //#ifdef SINK
+  //  if( All.TotN_sink == 0 || ( All.TotN_sink > 0 && nbnd == 0 )) {
+  //#endif 
 
   p_over_rho2_i =   (pressure - All.ExternalPressure )/(rho * rho) * dhsmlDensityFactor;
   h_i2 = h_i * h_i;
@@ -628,12 +628,12 @@ void hydro_evaluate(int target, int mode)
 	}
     }
   while(startnode >= 0);
-  #ifdef SINK
-    }
-    else {
-     printf("ThisTask: %d, Skipping force computation for particle %d, %d\n", ThisTask, target, nbnd);	    
-    }	
-  #endif 
+  //#ifdef SINK
+  //  }
+  ///  else {
+   //  printf("ThisTask: %d, Skipping force computation for particle %d, %d\n", ThisTask, target, nbnd);	    
+   // }	
+  //#endif 
 	    
 
   /* Now collect the result at the right place */

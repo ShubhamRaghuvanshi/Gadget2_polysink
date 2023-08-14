@@ -76,8 +76,11 @@ void compute_accelerations(int mode)
       tend = second();
 
       #ifdef SINK
-      MPI_Barrier(MPI_COMM_WORLD);           
-      setdens();
+      if(All.TotN_sink > 0 ){
+        MPI_Barrier(MPI_COMM_WORLD);           
+        setdens();
+        endrun(901); 
+      }
       #endif
       All.CPU_Predict += timediff(tstart, tend);
 
