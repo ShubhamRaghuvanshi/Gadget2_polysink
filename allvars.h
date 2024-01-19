@@ -607,6 +607,8 @@ extern struct sph_particle_data
   #ifdef SINK
   int AccretionTarget; 
   int BNDPARTICLE;
+  FLOAT Hsml_old;
+  FLOAT AccRatio;
   #endif
 
   #ifdef VARPOLYTROPE
@@ -698,7 +700,7 @@ extern struct io_header
  header;                               /*!< holds header for snapshot files */
 
 
-#define IO_NBLOCKS 17   /*!< total number of defined information blocks for snapshot files.
+#define IO_NBLOCKS 20   /*!< total number of defined information blocks for snapshot files.
                              Must be equal to the number of entries in "enum iofields" */
 
 enum iofields           /*!< this enumeration lists the defined output blocks in snapshot files. Not all of them need to be present. */
@@ -711,11 +713,14 @@ enum iofields           /*!< this enumeration lists the defined output blocks in
   IO_TEMP,
   IO_RHO,
   IO_NRHO,
-  IO_SDEN,
+  IO_DIVV,
+  IO_ROTV,
   IO_PRES,
   IO_HSML,
   IO_POT,
   IO_ACCEL,
+  IO_HACC,
+  IO_GACC,
   IO_DTENTR,
   IO_TSTP,
   #ifdef VARPOLYTROPE
@@ -799,6 +804,9 @@ extern struct densdata_in
   FLOAT Hsml;
   int Index;
   int Task;
+#ifdef SINK
+  int BNDPARTICLE;
+#endif 
 }
  *DensDataIn,                   /*!< holds particle data for SPH density computation to be exported to other processors */
  *DensDataGet;                  /*!< holds imported particle data for SPH density computation */

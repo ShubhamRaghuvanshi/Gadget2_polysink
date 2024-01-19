@@ -24,6 +24,7 @@
 void compute_accelerations(int mode)
 {
   double tstart, tend;
+  FLOAT hacc_abs, gacc_abs;
 
   if(ThisTask == 0)
     {
@@ -66,8 +67,30 @@ void compute_accelerations(int mode)
 	}
 
       tstart = second();
+
+
       density();		/* computes density, and pressure */
-   	    
+
+
+#ifdef SINK
+#ifdef SETSINKBND
+      if(All.TotN_sink > 0 ){
+        MPI_Barrier(MPI_COMM_WORLD);           
+        setdens();
+        //endrun(901); 
+      }
+#endif
+#endif
+      for(int igas=0; igas<N_gas; igas++){
+        if(isinf(SphP[igas].DhsmlDensityFactor) || isnan(SphP[igas].DhsmlDensityFactor) ){
+          printf("********************************************* After density correction\n") ;
+          printf("ThisTask : %d, Dhsmlrho is inf, pid: %d, rho: %g, numngb: %g, hsml: %g, divv: %g, curl: %g, dhsmlrho: %g\n", ThisTask, P[igas].ID, SphP[igas].Density, SphP[igas].NumNgb, SphP[igas].Hsml ,SphP[igas].DivVel, SphP[igas].CurlVel, SphP[igas].DhsmlDensityFactor);
+          printf("posx: %g, posy: %g, posz: %g, type: %d \n", P[igas].Pos[0], P[igas].Pos[1], P[igas].Pos[2], P[igas].Type);
+          printf("********************************************* After density correction\n") ; 
+          endrun(999);
+        }    
+      }
+
       tend = second();
       All.CPU_Hydro += timediff(tstart, tend);
 
@@ -75,15 +98,7 @@ void compute_accelerations(int mode)
       force_update_hmax();      /* tell the tree nodes the new SPH smoothing length such that they are guaranteed to hold the correct max(Hsml) */
       tend = second();
 
-      #ifdef SINK
-      if(All.TotN_sink > 0 ){
-        MPI_Barrier(MPI_COMM_WORLD);           
-        setdens();
-        endrun(901); 
-      }
-      #endif
       All.CPU_Predict += timediff(tstart, tend);
-
 
       if(ThisTask == 0)
 	{
@@ -91,20 +106,26 @@ void compute_accelerations(int mode)
 	  fflush(stdout);
 	}
 
+
       tstart = second();
-      hydro_force();		/* adds hydrodynamical accelerations and computes viscous entropy injection  */
-  
- //     #ifdef SINK
- //     for (int i=0; i<N_BND; i++ ){
- //       SphP[BNDList[i]].DtEntropy=0;
- //	SphP[BNDList[i]].HydroAccel[0]=0;
- //	SphP[BNDList[i]].HydroAccel[1]=0;
- //	SphP[BNDList[i]].HydroAccel[2]=0;      	      
- //     }	
- //     #endif 
-      
+      hydro_force();		/* adds hydrodynamical accelerations and computes viscous entropy injection  */        
       tend = second();
       All.CPU_Hydro += timediff(tstart, tend);
+
+
+
+//#ifdef SINK
+//#ifdef SETSINKBND
+ //     if(All.TotN_sink > 0 ){
+ //     savepositions(All.SnapshotFileCount++); 
+ //     if(ThisTask == 0 ){
+ //       printf("snapshot count : %d \n", All.SnapshotFileCount) ; 
+ //     }  
+ //     if(All.SnapshotFileCount > 100 ) {endrun(777);}
+ //     }
+//#endif 
+//#endif 
+
     }
 
   if(ThisTask == 0)

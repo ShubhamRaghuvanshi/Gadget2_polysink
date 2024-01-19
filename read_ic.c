@@ -280,8 +280,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
     case IO_POT:
     case IO_ACCEL:
+    case IO_HACC:
+    case IO_GACC:
     case IO_DTENTR:
     case IO_TSTP:
+    case IO_PRES:
+    case IO_DIVV:
+    case IO_ROTV:
+
       break;
     }
 }

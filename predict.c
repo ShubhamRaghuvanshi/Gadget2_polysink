@@ -140,25 +140,24 @@ void cutoff(){
   FLOAT cutoffradius =  All.CutoffRadius * All.CutoffRadius ;
   FLOAT seperation; 
  	int acc_counter = 0;
-	int i_ngb;
+	int igas;
 
-  for(int i=0;i<N_gas;i++)
+  for(int i=0; i<N_gas; i++)
   {	
-    seperation = (P[i].Pos[0]-SysState.CenterOfMass[0]) * (P[i].Pos[0]-SysState.CenterOfMass[0]) +
-                 (P[i].Pos[1]-SysState.CenterOfMass[1]) * (P[i].Pos[1]-SysState.CenterOfMass[1]) +
-                 (P[i].Pos[2]-SysState.CenterOfMass[2]) * (P[i].Pos[2]-SysState.CenterOfMass[2]);
+    igas = i - acc_counter ;
+    seperation = (P[igas].Pos[0]-SysState.CenterOfMass[0]) * (P[igas].Pos[0]-SysState.CenterOfMass[0]) +
+                 (P[igas].Pos[1]-SysState.CenterOfMass[1]) * (P[igas].Pos[1]-SysState.CenterOfMass[1]) +
+                 (P[igas].Pos[2]-SysState.CenterOfMass[2]) * (P[igas].Pos[2]-SysState.CenterOfMass[2]);
     if(seperation > cutoffradius)
     {
-      printf("############################################                        ThisTask : %d, cutting off particle : %d\n", ThisTask, P[i].ID);
+      printf("Step: %d, ThisTask : %d, NumPart: %d, cutting off particle : %d, dist: %g , hsml: %g , moving from : %d, to : %d\n", All.NumCurrentTiStep, ThisTask, NumPart, P[igas].ID, sqrt(seperation), SphP[igas].Hsml ,igas, NumPart -1 - acc_counter);
  
-			i_ngb = i - acc_counter ;
-
-      if(P[i_ngb].Ti_endstep == All.Ti_Current){
+      if(P[igas].Ti_endstep == All.Ti_Current){
         NumForceUpdate--;
         NumSphUpdate--;
       }
 
-	    for(int k = i_ngb; k<=NumPart-2 ; k++){ 
+	    for(int k = igas; k<=NumPart-2 ; k++){ 
   	  	P[k]    = P[k+1];
   	   	SphP[k] = SphP[k+1]; 
   	  } 
@@ -193,18 +192,23 @@ void identify_doomed_particles(void)
 
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
+  FLOAT *local_sink_accx, *local_sink_accy, *local_sink_accz;
   FLOAT *local_sink_mass;  
   int *local_sink_ID;  
  
   FLOAT *list_sink_posx, *list_sink_posy, *list_sink_posz;
   FLOAT *list_sink_velx, *list_sink_vely, *list_sink_velz;
+  FLOAT *list_sink_accx, *list_sink_accy, *list_sink_accz;
   FLOAT *list_sink_mass; 
   int *list_sink_ID;  
   
-  
   FLOAT *pos, *vel;
-  FLOAT Postemp[3], Veltemp[3];
+  FLOAT Postemp[3], Veltemp[3], gacc[3];
   
+  int hydro_acclimiter=0;
+  FLOAT cosphi, sinphi, theta, DX, DY, DZ, DXY;
+  FLOAT gax, gay, gaz, gar, hax, hay, haz, har ;
+
   int verbose = 0;
   if(ThisTask == 0 ){
   	printf("starting accretion...... STep: %d\n", All.NumCurrentTiStep);
@@ -214,6 +218,7 @@ void identify_doomed_particles(void)
   AccNum = 0;
   for(int igas=0; igas<N_gas; igas++){
     SphP[igas].AccretionTarget =0;
+    SphP[igas].BNDPARTICLE=0;
   }  
 	
   numsinks = NumPart - N_gas; 
@@ -226,6 +231,10 @@ void identify_doomed_particles(void)
   local_sink_velx = malloc(sizeof(double) * numsinkstot);
   local_sink_vely = malloc(sizeof(double) * numsinkstot);  
   local_sink_velz = malloc(sizeof(double) * numsinkstot);  
+  local_sink_accx = malloc(sizeof(double) * numsinkstot);
+  local_sink_accy = malloc(sizeof(double) * numsinkstot);  
+  local_sink_accz = malloc(sizeof(double) * numsinkstot);  
+
   local_sink_ID = malloc(sizeof(int) * numsinkstot);   
   local_sink_mass = malloc(sizeof(double) * numsinkstot);     
   list_sink_posx = malloc(sizeof(double) * numsinkstot * NTask);
@@ -234,6 +243,10 @@ void identify_doomed_particles(void)
   list_sink_velx = malloc(sizeof(double) * numsinkstot * NTask);
   list_sink_vely = malloc(sizeof(double) * numsinkstot * NTask);  
   list_sink_velz = malloc(sizeof(double) * numsinkstot * NTask); 
+  list_sink_accx = malloc(sizeof(double) * numsinkstot * NTask);
+  list_sink_accy = malloc(sizeof(double) * numsinkstot * NTask);  
+  list_sink_accz = malloc(sizeof(double) * numsinkstot * NTask); 
+
   list_sink_ID = malloc(sizeof(int) * numsinkstot * NTask);    
   list_sink_mass = malloc(sizeof(double) * numsinkstot * NTask);  
   
@@ -247,18 +260,25 @@ void identify_doomed_particles(void)
     local_sink_velx[i] = P[i+N_gas].Vel[0];
     local_sink_vely[i] = P[i+N_gas].Vel[1];    
     local_sink_velz[i] = P[i+N_gas].Vel[2];
+    local_sink_accx[i] = P[i+N_gas].GravAccel[0];
+    local_sink_accy[i] = P[i+N_gas].GravAccel[1];    
+    local_sink_accz[i] = P[i+N_gas].GravAccel[2];
+
     local_sink_ID[i] = P[i+N_gas].ID;    
     local_sink_mass[i] = P[i+N_gas].Mass; 
-    
-   // printf("ThisTask: %d, sinknum: %d, sinkid: %d\n\n", ThisTask, i+1, local_sink_ID[i]);    
+    // printf("ThisTask: %d, sinknum: %d, sinkid: %d\n\n", ThisTask, i+1, local_sink_ID[i]);    
   }  
- // MPI_Barrier(MPI_COMM_WORLD);   
+
+  // MPI_Barrier(MPI_COMM_WORLD);   
   MPI_Allgather(local_sink_posx, numsinkstot, MPI_DOUBLE, list_sink_posx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_posy, numsinkstot, MPI_DOUBLE, list_sink_posy, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
   MPI_Allgather(local_sink_posz, numsinkstot, MPI_DOUBLE, list_sink_posz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_velx, numsinkstot, MPI_DOUBLE, list_sink_velx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_vely, numsinkstot, MPI_DOUBLE, list_sink_vely, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
   MPI_Allgather(local_sink_velz, numsinkstot, MPI_DOUBLE, list_sink_velz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
+  MPI_Allgather(local_sink_accx, numsinkstot, MPI_DOUBLE, list_sink_accx, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Allgather(local_sink_accy, numsinkstot, MPI_DOUBLE, list_sink_accy, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
+  MPI_Allgather(local_sink_accz, numsinkstot, MPI_DOUBLE, list_sink_accz, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);  
   MPI_Allgather(local_sink_mass, numsinkstot, MPI_DOUBLE, list_sink_mass, numsinkstot, MPI_DOUBLE, MPI_COMM_WORLD);
   MPI_Allgather(local_sink_ID, numsinkstot, MPI_INT, list_sink_ID, numsinkstot, MPI_INT, MPI_COMM_WORLD);           
   MPI_Barrier(MPI_COMM_WORLD); 
@@ -272,6 +292,10 @@ void identify_doomed_particles(void)
       Veltemp[0] = list_sink_velx[i];
       Veltemp[1] = list_sink_vely[i];
       Veltemp[2] = list_sink_velz[i];            
+      gacc[0]    = list_sink_accx[i];
+      gacc[1]    = list_sink_accy[i];
+      gacc[2]    = list_sink_accz[i];            
+
       pos = Postemp;
       vel = Veltemp;
       
@@ -279,64 +303,82 @@ void identify_doomed_particles(void)
       sinkrad = All.AccretionRadius;       
 	
       KeplerL2 = All.G * list_sink_mass[i] * sinkrad; 
-      do
-      {
+      do{
         num = ngb_treefind_variable(&pos[0], sinkrad,&startnode); /* find all particles inside the sink radius */
         for(n = 0; n < num; n++){
           k = Ngblist[n];
-         /*
-          if(P[k].Type == 0 && P[k].Ti_endstep == All.Ti_Current && k < N_gas ){   
-            for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  
-	      seperation = sqrt(seperation);   
-              if(seperation <= sinkrad + SphP[k].Hsml){
-                SphP[k].sinkid[SphP[k].NBND] = list_sink_ID[i];
-		SphP[k].NBND++;
-                BNDList[N_BND] = k;
-                N_BND++;
-	     }
-	   }          
-          */
+
+          if(P[k].Type == 0 && k < N_gas && P[k].Ti_endstep == All.Ti_Current ){  
+            for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  /* r.r */  
+            seperation = sqrt(seperation);   /* r */
+            if(seperation <= sinkrad + 1.5*SphP[k].Hsml ){
+              SphP[k].BNDPARTICLE=1;
+              if(hydro_acclimiter == 1){
+                gax = P[k].GravAccel[0] - gacc[0];
+                gay = P[k].GravAccel[1] - gacc[1];
+                gaz = P[k].GravAccel[2] - gacc[2];
+
+                hax = SphP[k].HydroAccel[0] - gacc[0];
+                hay = SphP[k].HydroAccel[1] - gacc[1];
+                haz = SphP[k].HydroAccel[2] - gacc[2];
+
+                DX  = P[k].Pos[0] - pos[0];
+                DY  = P[k].Pos[1] - pos[1];
+                DZ  = P[k].Pos[2] - pos[2];
+
+                DXY = sqrt(DX*DX + DY*DY); 
+                theta = acos( DZ/(DX*DX + DY*DY + DZ*DZ) );
+            
+                sinphi = DY/DXY;
+                cosphi = DX/DXY;
+
+                gar    =  sin(theta)*cosphi*gax  + sin(theta)*sinphi*gay + cos(theta)*gaz;
+                har    =  sin(theta)*cosphi*hax  + sin(theta)*sinphi*hay + cos(theta)*haz;
+                if(har > gar){
+                  SphP[k].HydroAccel[0] =  P[k].GravAccel[0];
+                  SphP[k].HydroAccel[1] =  P[k].GravAccel[1];
+                  SphP[k].HydroAccel[2] =  P[k].GravAccel[2];
+
+                }
+              }
+            }  
+          }
           
           //We want to only mark particles for accretion if they haven't been marked previously
           if(P[k].Type == 0 && k < N_gas && (SphP[k].AccretionTarget ==0 || SphP[k].AccretionTarget==-2) && P[k].Ti_endstep == All.Ti_Current ){  /* only accrete gas particles! */
             for(seperation = 0,j = 0; j < 3; j++) seperation += (P[k].Pos[j]-pos[j]) * (P[k].Pos[j]-pos[j]);  /* r.r */  
             seperation = sqrt(seperation);   /* r */
- 
-              
-            if(seperation < sinkrad){
-
-
-             for(relvel = 0,j = 0; j < 3; j++)
+                 
+            if(seperation < sinkrad && seperation >= sinkrad/2.0 ){
+              for(relvel = 0,j = 0; j < 3; j++)
                 relvel += (P[k].Vel[j]-vel[j]) * (P[k].Vel[j]-vel[j]);      /* v.v */
-              
-              
+  
               relenergy = .5*relvel - All.G*list_sink_mass[i]/seperation;
- 	      vdotr =  (P[k].Vel[0]-vel[0])*(P[k].Pos[0]-pos[0]);
+ 	            vdotr =  (P[k].Vel[0]-vel[0])*(P[k].Pos[0]-pos[0]);
               vdotr += (P[k].Vel[1]-vel[1])*(P[k].Pos[1]-pos[1]);
               vdotr += (P[k].Vel[2]-vel[2])*(P[k].Pos[2]-pos[2]);
 
  							//if(verbose) 
-          //    printf("Particle ID %d is within accretion radius of sink ID %d from %d           %f               %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,relenergy);
+              //printf("Particle ID %d is within accretion radius of sink ID %d from %d           %f               %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,relenergy);
               
               if(notestflag) relenergy = -1;  
               if(relenergy < 0){
               
-           //   	printf("Particle ID %d is bound to  sink ID %d from %d %f %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,sinkrad);
+                //printf("Particle ID %d is bound to  sink ID %d from %d %f %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,sinkrad);
               
                 for(little_L = 0, j = 0;j < 3; j++) little_L +=pow( (P[k].Pos[(j+1)%3] - pos[(j+1)%3]) * (P[k].Vel[(j+2)%3] - vel[(j+2)%3]) -  (P[k].Pos[(j+2)%3] - pos[(j+2)%3]) * (P[k].Vel[(j+1)%3] - vel[(j+1)%3]) ,2); /* L.L */
-                if(notestflag) little_L = KeplerL2 /2;								  						
+                //if(notestflag) little_L = KeplerL2 /2;
+                little_L = KeplerL2 /2;								  						
                 //This test may be a bit too stringent, turn it off if things aren't being accreted
                 if(little_L < KeplerL2){             
-                  if(SphP[k].AccretionTarget == 0 || 1){  /* if targeted by another sink, it doesn't get accreted */ 
+                  if(SphP[k].AccretionTarget == 0 ){  /* if targeted by another sink, it doesn't get accreted */ 
                     SphP[k].AccretionTarget = list_sink_ID[i];       /* if bound in E and L, accrete it */
                     /*AccreteList[AccNum] = k;*/
-                    if(verbose) printf("Particle ID %d provisionally scheduled for destruction onto sink ID %d from %d %f %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,sinkrad);
-                    
-             //       printf("Particle ID %d provisionally scheduled for destruction onto sink ID %d from %d,  with   d= %f     E= %f      l=  %f,  L_kep= %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,relenergy, little_L, KeplerL2);
-                    
+                    if(verbose) printf("Particle ID %d provisionally scheduled for destruction onto sink ID %d from %d %f %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,sinkrad);  
+                    //printf("Particle ID %d provisionally scheduled for destruction onto sink ID %d from %d,  with   d= %f     E= %f      l=  %f,  L_kep= %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,relenergy, little_L, KeplerL2);  
                     /*AccNum++; */ 
                   }
-/* let   it go until it's unambiguously targeted */                
+                  /* let it go until it's unambiguously targeted */                
                   else{
                     SphP[k].AccretionTarget = -2; /* if targeted by multiple sinks, it doesn't get accreted by any*/
                     if(verbose) printf("%d targeted twice! sink ID %d from %d %f %f\n",P[k].ID,list_sink_ID[i],ThisTask,seperation,sinkrad);
@@ -344,13 +386,16 @@ void identify_doomed_particles(void)
                 }  // if(little_L < KeplerL2)
               }
             }
+	          else if(seperation < sinkrad/2.0){
+	             SphP[k].AccretionTarget = list_sink_ID[i];	    
+	          }
           }	       	      	     
         } 
       }
       while(startnode>=0);
     }
   }
-  
+
   if(verbose) printf("Confirmed for accretion: ");
   for(i = 0; i < N_gas; i++){
     if(SphP[i].AccretionTarget > 0){
@@ -362,7 +407,7 @@ void identify_doomed_particles(void)
   } 
   if(verbose) printf("\n");
   
-  All.TstepLastAcc = All.NumCurrentTiStep;
+  //All.TstepLastAcc = All.NumCurrentTiStep;
    
   free(list_sink_posx);
   free(list_sink_posy);

@@ -33,9 +33,9 @@ void run(void)
     {
      t0 = second();
 
-      #ifdef VARPOLYTROPE
+#ifdef VARPOLYTROPE
       UpdateGamma();  
-      #endif         
+#endif         
 
 //			if(All.NumCurrentTiStep%500 = 0){
 //			 All.TimeBetSnapshot = All.TimeBetSnapshot/2.0; 
@@ -52,6 +52,10 @@ void run(void)
 
 	
       domain_Decomposition();	/* do domain decomposition if needed */
+
+      compute_accelerations(0);  /* compute accelerations for 
+                                 * the particles that are to be advanced  
+                                 *                                  *                                  *                                  */
 
   
 #ifndef SINK
@@ -97,7 +101,7 @@ void run(void)
  
           
 				if(All.NumCurrentTiStep%10 == 0){
-//					MPI_Barrier(MPI_COMM_WORLD);
+					MPI_Barrier(MPI_COMM_WORLD);
 					create_sink();
 //					MPI_Barrier(MPI_COMM_WORLD);					
 				}  
@@ -124,23 +128,25 @@ void run(void)
 			
 			if(N_sink > 0){
 				char filename[100];
-				FLOAT sr, sv, sa, L ;
+				//FLOAT sx, sy, sz, svx, svy, svz, sa, L ;
 				
 				for(int i=N_gas; i<NumPart; i++){
 			  	FILE *sinklist;
 					sprintf(filename, "%s/sink_%d.txt", All.OutputDir, P[i].ID);
 					sinklist = fopen(filename,"a");
 
-    			sr = (P[i].Pos[0]-SysState.CenterOfMass[0]) * (P[i].Pos[0]-SysState.CenterOfMass[0]) +
-               (P[i].Pos[1]-SysState.CenterOfMass[1]) * (P[i].Pos[1]-SysState.CenterOfMass[1]) +
-               (P[i].Pos[2]-SysState.CenterOfMass[2]) * (P[i].Pos[2]-SysState.CenterOfMass[2]);
+    			//sr = (P[i].Pos[0]-SysState.CenterOfMass[0]) * (P[i].Pos[0]-SysState.CenterOfMass[0]) +
+          //     (P[i].Pos[1]-SysState.CenterOfMass[1]) * (P[i].Pos[1]-SysState.CenterOfMass[1]) +
+          //     (P[i].Pos[2]-SysState.CenterOfMass[2]) * (P[i].Pos[2]-SysState.CenterOfMass[2]);
 
-					sr = sqrt(sr);
-					sv = sqrt( P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]  );
-					sa = sqrt( P[i].GravAccel[0]*P[i].GravAccel[0] +  P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2]); 
-			 		L = sqrt(P[i].Spin[0]*P[i].Spin[0] + P[i].Spin[1]*P[i].Spin[1] + P[i].Spin[2]*P[i].Spin[2]) ; 
+					//sr = sqrt(sr);
+					//sv = sqrt( P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]  );
+					//sa = sqrt( P[i].GravAccel[0]*P[i].GravAccel[0] +  P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2]); 
+			 		//L = sqrt(P[i].Spin[0]*P[i].Spin[0] + P[i].Spin[1]*P[i].Spin[1] + P[i].Spin[2]*P[i].Spin[2]) ; 
 			 	
-					fprintf(sinklist, "%d		%0.9f		%0.4f		%0.4f		%0.4f		%0.4f		%d		%0.4f		%0.4f		%0.4f\n", All.NumCurrentTiStep, All.Time, sr, sv, sa, P[i].Mass, P[i].NAccreted, P[i].Spin[2], L, AccNumAll*P[0].Mass );
+					fprintf(sinklist, "%d		%0.9f		%0.9f		%0.9f   %0.9f   %0.9f		%0.9f		%0.9f   %0.9f		%0.9f		%0.9f   %0.9f   %0.9f		%0.9f   %0.9f		%d		%0.9f\n", All.NumCurrentTiStep, All.Time, 
+          P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2], P[i].GravAccel[0], P[i].GravAccel[1], P[i].GravAccel[2], P[i].Spin[0], P[i].Spin[1], P[i].Spin[2], 
+          P[i].Mass, P[i].NAccreted, AccNumAll*P[0].Mass );
 					fclose(sinklist);
 				}				
 			}
@@ -173,13 +179,22 @@ void run(void)
         					}
 
       }
-      
+
+#ifdef SETSINKBND
+  if(All.TotN_sink > 0 ){
+    for(int igas=0; igas<N_gas; igas++){
+      SphP[igas].Hsml_old = SphP[igas].Hsml;
+      //SphP[igas].DhsmlDensityFactor_old = SphP[igas].DhsmlDensityFactor;
+      //SphP[igas].Density_old = SphP[igas].Density;
+    }  
+    if(All.NumCurrentTiStep%3 == 0){
+      cutoff();
+    }
+  }
+#endif 
       
 #endif
 
-      compute_accelerations(0);  /* compute accelerations for 
-                                 * the particles that are to be advanced  
-                                 *                                  *                                  *                                  */
 
 
 
@@ -994,7 +1009,7 @@ void create_sink(){
 		if(ThisTask == thistask){
 			printf("ThisTask: %d, Created sink with %d neigbours within the radius %g,  All.TotN_sink : %d \n", ThisTask, All.TotN_accrete, twohsml, All.TotN_sink);
 		}
-
+    savepositions(All.SnapshotFileCount++);
 	}	 //issink
 	AccNum=0;
   free(list_sink_posx);

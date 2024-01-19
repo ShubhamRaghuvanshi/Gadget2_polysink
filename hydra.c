@@ -392,20 +392,13 @@ void hydro_evaluate(int target, int mode)
   double hfc, dwk_i, vdotr, vdotr2, visc, mu_ij, rho_ij, vsig;
   double h_j, dwk_j, r, r2, u, hfc_visc;
 
-  #ifdef SINK
-  int bndparticle=0;
-  #endif
-
+ 
   #ifndef NOVISCOSITYLIMITER
   double dt;
   #endif
 
   if(mode == 0)
     {
-//      #ifdef SINK
-//      if(All.TotN_sink > 0)
-//        nbnd = SphP[target].NBND;       
-//      #endif     
       pos = P[target].Pos;
       vel = SphP[target].VelPred;
       h_i = SphP[target].Hsml;
@@ -415,15 +408,16 @@ void hydro_evaluate(int target, int mode)
       pressure = SphP[target].Pressure;
       timestep = P[target].Ti_endstep - P[target].Ti_begstep;
 
-        #ifdef VARPOLYTROPE
+
+#ifdef VARPOLYTROPE
         soundspeed_i = sqrt(SphP[target].Gamma * pressure / rho);
         if(All.ComovingIntegrationOn)
         {
           fac_mu  = pow(All.Time, 3 * (SphP[target].Gamma - 1.0) / 2) / All.Time;
 				}
-        #else
+#else
         soundspeed_i = sqrt(GAMMA * pressure / rho);
-        #endif
+#endif
         f1 = fabs(SphP[target].DivVel) /
 	(fabs(SphP[target].DivVel) + SphP[target].CurlVel +
 	 0.0001 * soundspeed_i / SphP[target].Hsml / fac_mu);
@@ -431,10 +425,6 @@ void hydro_evaluate(int target, int mode)
   }
   else
     {
- //     #ifdef SINK
- //     if(All.TotN_sink > 0)
- //       nbnd = HydroDataGet[target].NBND;       
- //     #endif     
       pos = HydroDataGet[target].Pos;
       vel = HydroDataGet[target].Vel;
       h_i = HydroDataGet[target].Hsml;
@@ -444,11 +434,11 @@ void hydro_evaluate(int target, int mode)
       pressure = HydroDataGet[target].Pressure;
       timestep = HydroDataGet[target].Timestep;
 
-        #ifdef VARPOLYTROPE
+#ifdef VARPOLYTROPE
         soundspeed_i = sqrt(HydroDataGet[target].Gamma * pressure / rho);
-        #else
+#else
         soundspeed_i = sqrt(GAMMA * pressure / rho);
-        #endif
+#endif
 
 
       f1 = HydroDataGet[target].F1;
@@ -470,6 +460,7 @@ void hydro_evaluate(int target, int mode)
   startnode = All.MaxPart;
   do
     {
+
       numngb = ngb_treefind_pairs(&pos[0], h_i, &startnode);
 
       for(n = 0; n < numngb; n++)
@@ -623,6 +614,19 @@ void hydro_evaluate(int target, int mode)
 		  acc[1] -= hfc * dy;
 		  acc[2] -= hfc * dz;
 		  dtEntropy += 0.5 * hfc_visc * vdotr2;
+
+      if(isnan(acc[0]) || isnan(acc[1]) || isnan(acc[2]) ){
+        printf("**************************\n");
+        printf("ACC is nan, ThisTask: %d, pid: %d, dx: %g, dy: %g, dz: %g, hfc: %g, hfc_visc: %g, dhsmldensityfactor: %g\n", ThisTask, P[j].ID, dx, dy, dz, hfc, hfc_visc, SphP[j].DhsmlDensityFactor);  
+        printf("dwk_i: %g, dwk_j: %g, p_over_rho2_i: %g, p_over_rho2_j: %g, r: %g, visc: %g, pmass: %g\n", dwk_i, dwk_j, p_over_rho2_i, p_over_rho2_j, r, visc, P[j].Mass);
+        printf("h_i: %g, h_j: %g, r: %g\n", h_i, h_j, r);
+        printf("rho_i: %g, rho_j: %g, isinf: %d \n", rho, SphP[j].Density, isinf(SphP[j].DhsmlDensityFactor));
+        printf("**************************\n");
+        endrun(919);
+      }
+    
+
+
 		}
 	    }
 	}
@@ -640,7 +644,7 @@ void hydro_evaluate(int target, int mode)
   if(mode == 0)
     {
       for(k = 0; k < 3; k++)
-	SphP[target].HydroAccel[k] = acc[k];
+	    SphP[target].HydroAccel[k] = acc[k];
       SphP[target].DtEntropy = dtEntropy;
       SphP[target].MaxSignalVel = maxSignalVel;
     }

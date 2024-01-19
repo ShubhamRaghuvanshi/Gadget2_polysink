@@ -63,7 +63,7 @@ OPT   +=  -DOUTPUTACCELERATION
 
 # sink particle options
 OPT += -DSINK
-#OPT += -DSINKBND
+OPT += -DSETSINKBND
 
 #OPT +=  -DISOTHERM_EQS
 #OPT += -DADIABATIC
