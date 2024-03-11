@@ -127,8 +127,8 @@ int ngb_treefind_pairs(FLOAT searchcenter[3], FLOAT hsml, int *startnode)
 	  if(numngb == MAX_NGB)
 	    {
 	      printf
-		("ThisTask=%d: Need to do a second neighbour loop in hydro-force for (%g|%g|%g) hsml=%g no=%d\n",
-		 ThisTask, searchcenter[0], searchcenter[1], searchcenter[2], hsml, no);
+		("ThisTask=%d: Need to do a second neighbour loop in hydro-force for (%g|%g|%g) hsml=%g no=%d, pid:%d\n",
+		 ThisTask, searchcenter[0], searchcenter[1], searchcenter[2], hsml, no, P[p].ID);
 	      *startnode = no;
 	      return numngb;
 	    }
@@ -255,7 +255,7 @@ int ngb_treefind_variable(FLOAT searchcenter[3], FLOAT hsml, int *startnode)
 	      numngb = ngb_clear_buf(searchcenter, hsml, numngb);
 	      if(numngb == MAX_NGB)
 		{
-		  printf("ThisTask=%d: Need to do a second neighbour loop in ngb_treefind_variable for (%g|%g|%g) hsml=%g no=%d\n",
+		  printf("ThisTask=%d: Need to do a second neighbour loop for (%g|%g|%g) hsml=%g no=%d\n",
 			 ThisTask, searchcenter[0], searchcenter[1], searchcenter[2], hsml, no);
 		  *startnode = no;
 		  return numngb;

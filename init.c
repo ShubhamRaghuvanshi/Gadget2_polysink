@@ -163,7 +163,6 @@ if(RestartFlag == 0){
 if(RestartFlag == 0 || RestartFlag == 2 ){
         for(int i=0; i<N_gas; i++){
                 SphP[i].AccretionTarget = 0;
-                SphP[i].BNDPARTICLE=0;
                 P[i].Spin[0] =0;
                 P[i].Spin[1] =0;
                 P[i].Spin[2] =0; 

@@ -376,20 +376,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  }
       break;
 
-    case IO_DIVV:		/* density */
+    case IO_SDEN:		/* density */
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	    *fp++ = SphP[pindex].DivVel;
-	    n++;
-	  }
-      break;
-
-    case IO_ROTV:		/* density */
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].CurlVel;
+	    *fp++ = SphP[pindex].Density*SphP[pindex].Hsml/3.0;
 	    n++;
 	  }
       break;
@@ -439,14 +430,14 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
 	    if(P[pindex].Type == 0){
 	    	
-#ifdef VARPOLYTROPE
+	    	#ifdef VARPOLYTROPE
 				if(All.ComovingIntegrationOn){
 	    		fac2 = 1 / pow(All.Time, 3 * SphP[pindex].Gamma - 2); 				
 				}				
 				else{
 					fac2 = 1;
 				}		    
-#endif 
+	    	#endif 
 	    
 	      for(k = 0; k < 3; k++){
 	    			fp[k] += fac2 * SphP[pindex].HydroAccel[k]; 	
@@ -454,53 +445,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 			} 
 	    fp += 3;
 	    n++;
-	  } 
+	  }
+	  
 #endif
-      break;
 
-    case IO_HACC:		/* hydro acceleration */
-#ifdef OUTPUTACCELERATION
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    if(P[pindex].Type == 0){
-	    	
-#ifdef VARPOLYTROPE
-				if(All.ComovingIntegrationOn){
-	    		fac2 = 1 / pow(All.Time, 3 * SphP[pindex].Gamma - 2); 				
-				}				
-				else{
-					fac2 = 1;
-				}		    
-#endif 
-	    
-	      for(k = 0; k < 3; k++){
-	    			fp[k] += fac2 * SphP[pindex].HydroAccel[k]; 	
-				}
-			} 
-	    fp += 3;
-	    n++;
-	  } 
-#endif
-      break;
 
-    case IO_GACC:		/* gravitational acceleration */
-#ifdef OUTPUTACCELERATION
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(k = 0; k < 3; k++)
-	      fp[k] = fac1 * P[pindex].GravAccel[k];
-#ifdef PMGRID
-	    for(k = 0; k < 3; k++)
-	      fp[k] += fac1 * P[pindex].GravPM[k];
-#endif
-	    fp += 3;
-	    n++;
-	  } 
-#endif
       break;
-
 
     case IO_DTENTR:		/* rate of change of entropy */
 #ifdef OUTPUTCHANGEOFENTROPY
@@ -569,8 +519,6 @@ int get_bytes_per_blockelement(enum iofields blocknr)
     case IO_POS:
     case IO_VEL:
     case IO_ACCEL:
-    case IO_HACC:
-    case IO_GACC:
       bytes_per_blockelement = 3 * sizeof(float);
       break;
 
@@ -587,8 +535,7 @@ int get_bytes_per_blockelement(enum iofields blocknr)
     case IO_TEMP:
     case IO_RHO:
     case IO_NRHO:
-    case IO_DIVV:
-    case IO_ROTV:
+    case IO_SDEN:
     case IO_PRES:
     case IO_HSML:
     case IO_POT:
@@ -648,8 +595,6 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_POS:
     case IO_VEL:
     case IO_ACCEL:
-    case IO_HACC:
-    case IO_GACC:
       values = 3;
       break;
 
@@ -659,8 +604,7 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_TEMP:
     case IO_RHO:
     case IO_NRHO:
-    case IO_DIVV:    
-    case IO_ROTV:
+    case IO_SDEN:    
     case IO_PRES:
     case IO_HSML:
     case IO_POT:
@@ -714,8 +658,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_POS:
     case IO_VEL:
     case IO_ACCEL:
-    case IO_HACC:
-    case IO_GACC:
     case IO_TSTP:
     case IO_ID:
     case IO_POT:
@@ -736,8 +678,7 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_TEMP:
     case IO_RHO:
     case IO_NRHO:
-    case IO_DIVV:
-    case IO_ROTV:
+    case IO_SDEN:
     case IO_PRES:
     case IO_HSML:
     case IO_DTENTR:
@@ -774,13 +715,6 @@ int blockpresent(enum iofields blocknr)
 #ifndef OUTPUTACCELERATION
   if(blocknr == IO_ACCEL)
     return 0;
-
-  if(blocknr == IO_HACC)
-    return 0;
-
-  if(blocknr == IO_GACC)
-    return 0;
-
 #endif
 
 #ifndef OUTPUTCHANGEOFENTROPY
@@ -836,14 +770,9 @@ void fill_Tab_IO_Labels(void)
 	strncpy(Tab_IO_Labels[IO_NRHO], "NRHO ", 4);
 	break;
 
-      case IO_DIVV:
-	strncpy(Tab_IO_Labels[IO_DIVV], "DIVV ", 4);
+      case IO_SDEN:
+	strncpy(Tab_IO_Labels[IO_SDEN], "SDEN ", 4);
 	break;
-
-      case IO_ROTV:
-	strncpy(Tab_IO_Labels[IO_ROTV], "ROTV ", 4);
-	break;
-
 
      case IO_PRES:	
 	strncpy(Tab_IO_Labels[IO_PRES], "PRES ", 4);
@@ -857,12 +786,6 @@ void fill_Tab_IO_Labels(void)
 	break;
       case IO_ACCEL:
 	strncpy(Tab_IO_Labels[IO_ACCEL], "ACCE", 4);
-	break;
-      case IO_HACC:
-	strncpy(Tab_IO_Labels[IO_HACC], "HACC", 4);
-	break;
-      case IO_GACC:
-	strncpy(Tab_IO_Labels[IO_GACC], "GACC", 4);
 	break;
       case IO_DTENTR:
 	strncpy(Tab_IO_Labels[IO_DTENTR], "ENDT", 4);
@@ -922,12 +845,8 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       strcpy(buf, "NDensity");
       break;     
 
-     case IO_DIVV:
-      strcpy(buf, "DivVel");
-      break;     
-
-     case IO_ROTV:
-      strcpy(buf, "CurlVel");
+     case IO_SDEN:
+      strcpy(buf, "SurDens");
       break;     
 
     case IO_PRES:
@@ -941,12 +860,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       break;
     case IO_ACCEL:
       strcpy(buf, "Acceleration");
-      break;
-    case IO_HACC:
-      strcpy(buf, "HydroAcc");
-      break;
-    case IO_GACC:
-      strcpy(buf, "GravAcc");
       break;
     case IO_DTENTR:
       strcpy(buf, "RateOfChangeOfEntropy");

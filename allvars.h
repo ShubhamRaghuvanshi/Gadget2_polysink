@@ -516,8 +516,8 @@ extern struct global_data_all_processes
 
 //SINK
 #ifdef SINK
-    int AccreteFlag;           /* Determines whether a domain decomposition should cause accretion to be processed */
-		int TstepLastAcc;
+    //int AccreteFlag;           /* Determines whether a domain decomposition should cause accretion to be processed */
+		//int TstepLastAcc;
 		int TotN_accrete;
 		int TotN_sink;
 #endif 
@@ -527,7 +527,7 @@ extern struct global_data_all_processes
 		double CriticalTemperature;
 		int    CriticalNumstep;
 		double CutoffRadius;
-                int FixedTimestep;
+    int FixedTimestep;
 //SINK*
 
 }
@@ -606,9 +606,10 @@ extern struct sph_particle_data
 
   #ifdef SINK
   int AccretionTarget; 
-  int BNDPARTICLE;
+  //int BNDPARTICLE;
   FLOAT Hsml_old;
-  FLOAT AccRatio;
+  FLOAT DhsmlDensityFactor_old;
+  FLOAT Density_old;
   #endif
 
   #ifdef VARPOLYTROPE
@@ -619,7 +620,16 @@ extern struct sph_particle_data
  *SphP,                        	/*!< holds SPH particle data on local processor */
  *DomainSphBuf;                 /*!< buffer for SPH particle data in domain decomposition */
 
-
+//#ifdef SINK
+//extern struct sink_particle_data
+//{
+//  FLOAT mass;
+//  FLOAT spin[3];
+//  FLOAT aposx[1000], aposy[1000], aposz[1000];
+//  FLOAT avelx[1000], avely[1000], avelz[1000];
+//  int a_tt;
+//}
+//#endif
 
 /*  Variables for Tree
  */
@@ -700,7 +710,7 @@ extern struct io_header
  header;                               /*!< holds header for snapshot files */
 
 
-#define IO_NBLOCKS 20   /*!< total number of defined information blocks for snapshot files.
+#define IO_NBLOCKS 17   /*!< total number of defined information blocks for snapshot files.
                              Must be equal to the number of entries in "enum iofields" */
 
 enum iofields           /*!< this enumeration lists the defined output blocks in snapshot files. Not all of them need to be present. */
@@ -713,14 +723,11 @@ enum iofields           /*!< this enumeration lists the defined output blocks in
   IO_TEMP,
   IO_RHO,
   IO_NRHO,
-  IO_DIVV,
-  IO_ROTV,
+  IO_SDEN,
   IO_PRES,
   IO_HSML,
   IO_POT,
   IO_ACCEL,
-  IO_HACC,
-  IO_GACC,
   IO_DTENTR,
   IO_TSTP,
   #ifdef VARPOLYTROPE
@@ -804,9 +811,6 @@ extern struct densdata_in
   FLOAT Hsml;
   int Index;
   int Task;
-#ifdef SINK
-  int BNDPARTICLE;
-#endif 
 }
  *DensDataIn,                   /*!< holds particle data for SPH density computation to be exported to other processors */
  *DensDataGet;                  /*!< holds imported particle data for SPH density computation */
@@ -838,7 +842,7 @@ extern struct hydrodata_in
   int   Index;
 
   #ifdef SINK
-  int BNDPARTICLE;
+  //int BNDPARTICLE;
   int AccretionTarget;
   #endif 
 

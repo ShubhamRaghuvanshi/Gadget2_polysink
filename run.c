@@ -33,9 +33,9 @@ void run(void)
     {
      t0 = second();
 
-#ifdef VARPOLYTROPE
+      #ifdef VARPOLYTROPE
       UpdateGamma();  
-#endif         
+      #endif         
 
 //			if(All.NumCurrentTiStep%500 = 0){
 //			 All.TimeBetSnapshot = All.TimeBetSnapshot/2.0; 
@@ -53,11 +53,12 @@ void run(void)
 	
       domain_Decomposition();	/* do domain decomposition if needed */
 
+  
       compute_accelerations(0);  /* compute accelerations for 
                                  * the particles that are to be advanced  
-                                 *                                  *                                  *                                  */
+                                 *                                  *                                  */
 
-  
+
 #ifndef SINK
    		if(All.NumCurrentTiStep >=All.CriticalNumstep && All.NumCurrentTiStep%10 == 0 ){
                         double n_crit_cgs = 1e16, mh =  2.408544e-24;
@@ -101,7 +102,7 @@ void run(void)
  
           
 				if(All.NumCurrentTiStep%10 == 0){
-					MPI_Barrier(MPI_COMM_WORLD);
+//					MPI_Barrier(MPI_COMM_WORLD);
 					create_sink();
 //					MPI_Barrier(MPI_COMM_WORLD);					
 				}  
@@ -128,25 +129,23 @@ void run(void)
 			
 			if(N_sink > 0){
 				char filename[100];
-				//FLOAT sx, sy, sz, svx, svy, svz, sa, L ;
+				FLOAT sr, sv, sa, L ;
 				
 				for(int i=N_gas; i<NumPart; i++){
 			  	FILE *sinklist;
 					sprintf(filename, "%s/sink_%d.txt", All.OutputDir, P[i].ID);
 					sinklist = fopen(filename,"a");
 
-    			//sr = (P[i].Pos[0]-SysState.CenterOfMass[0]) * (P[i].Pos[0]-SysState.CenterOfMass[0]) +
-          //     (P[i].Pos[1]-SysState.CenterOfMass[1]) * (P[i].Pos[1]-SysState.CenterOfMass[1]) +
-          //     (P[i].Pos[2]-SysState.CenterOfMass[2]) * (P[i].Pos[2]-SysState.CenterOfMass[2]);
+    			sr = (P[i].Pos[0]-SysState.CenterOfMass[0]) * (P[i].Pos[0]-SysState.CenterOfMass[0]) +
+               (P[i].Pos[1]-SysState.CenterOfMass[1]) * (P[i].Pos[1]-SysState.CenterOfMass[1]) +
+               (P[i].Pos[2]-SysState.CenterOfMass[2]) * (P[i].Pos[2]-SysState.CenterOfMass[2]);
 
-					//sr = sqrt(sr);
-					//sv = sqrt( P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]  );
-					//sa = sqrt( P[i].GravAccel[0]*P[i].GravAccel[0] +  P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2]); 
-			 		//L = sqrt(P[i].Spin[0]*P[i].Spin[0] + P[i].Spin[1]*P[i].Spin[1] + P[i].Spin[2]*P[i].Spin[2]) ; 
+					sr = sqrt(sr);
+					sv = sqrt( P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]  );
+					sa = sqrt( P[i].GravAccel[0]*P[i].GravAccel[0] +  P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2]); 
+			 		L = sqrt(P[i].Spin[0]*P[i].Spin[0] + P[i].Spin[1]*P[i].Spin[1] + P[i].Spin[2]*P[i].Spin[2]) ; 
 			 	
-					fprintf(sinklist, "%d		%0.9f		%0.9f		%0.9f   %0.9f   %0.9f		%0.9f		%0.9f   %0.9f		%0.9f		%0.9f   %0.9f   %0.9f		%0.9f   %0.9f		%d		%0.9f\n", All.NumCurrentTiStep, All.Time, 
-          P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2], P[i].GravAccel[0], P[i].GravAccel[1], P[i].GravAccel[2], P[i].Spin[0], P[i].Spin[1], P[i].Spin[2], 
-          P[i].Mass, P[i].NAccreted, AccNumAll*P[0].Mass );
+					fprintf(sinklist, "%d		%0.9f		%0.4f		%0.4f		%0.4f		%0.4f		%d		%0.4f		%0.4f		%0.4f\n", All.NumCurrentTiStep, All.Time, sr, sv, sa, P[i].Mass, P[i].NAccreted, P[i].Spin[2], L, AccNumAll*P[0].Mass );
 					fclose(sinklist);
 				}				
 			}
@@ -165,13 +164,13 @@ void run(void)
 					
 					TotMassInSinks  = AccNumAll*P[0].Mass; 
 					
-					printf("ThisTask: %d, Step: %d, NumPart:%d, N_gas:%d, N_sinks:%d, AccNumAll: %d, TotN_gas:%d, TotN_accrete:%d, All.TotN_sink:%d, TotNumPart:%d, TotMassInSinks: %g, AccretionRadius: %g \n", ThisTask, All.NumCurrentTiStep, NumPart, N_gas, N_sink, AccNumAll, All.TotN_gas,   All.TotN_accrete , All.TotN_sink,  All.TotN_gas+All.TotN_sink, TotMassInSinks, All.AccretionRadius);				
+					printf("ThisTask: %d, NumPart:%d, N_gas:%d, N_sinks:%d, AccNumAll: %d, TotN_gas:%d, TotN_accrete:%d, All.TotN_sink:%d, TotNumPart:%d, TotMassInSinks: %g, AccretionRadius: %g \n", ThisTask, NumPart, N_gas, N_sink, AccNumAll, All.TotN_gas,   All.TotN_accrete , All.TotN_sink,  All.TotN_gas+All.TotN_sink, TotMassInSinks, All.AccretionRadius);				
 			 
 			 }
        MPI_Barrier(MPI_COMM_WORLD);
 			 MPI_Bcast(&TotMassInSinks , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-					if(TotMassInSinks > 50.0){
+					if(TotMassInSinks > 20.0){
 						if(ThisTask == 0 ){
 							printf("ThisTask : %d, Total mass in sinks has reached 50 , you've defeated the final boss \n", ThisTask);	
 							endrun(420);
@@ -179,25 +178,12 @@ void run(void)
         					}
 
       }
-
-#ifdef SETSINKBND
-  if(All.TotN_sink > 0 ){
-    for(int igas=0; igas<N_gas; igas++){
-      SphP[igas].Hsml_old = SphP[igas].Hsml;
-      //SphP[igas].DhsmlDensityFactor_old = SphP[igas].DhsmlDensityFactor;
-      //SphP[igas].Density_old = SphP[igas].Density;
-    }  
-    if(All.NumCurrentTiStep%3 == 0){
-      cutoff();
-    }
-  }
-#endif 
+      
       
 #endif
 
 
-
-
+ 
 
       /* check whether we want a full energy statistics */
       if((All.Time - All.TimeLastStatistics) >= All.TimeBetStatistics)
@@ -489,27 +475,27 @@ int find_next_outputtime(int ti_curr)
 if(All.FixedTimestep == 0){
 	#ifdef SINK
 	if(SinkFlag == 1 ){
-		time += 0.00002;
+		time += 0.00001;
 	}          
         else if(All.NumCurrentTiStep  < 1000 ){
 		time += All.TimeBetSnapshot;
 	}
-	else if(All.NumCurrentTiStep  >= 1000 && All.NumCurrentTiStep  < 2000 ){
+	else if(All.NumCurrentTiStep  >= 1000 && All.NumCurrentTiStep  < 1900 ){
 		time += All.TimeBetSnapshot/10.0;
 	}
-	else if (All.NumCurrentTiStep  >= 2000) {
+	else if (All.NumCurrentTiStep  >= 1900) {
 		time += All.TimeBetSnapshot/100.0;
 	}
 	else {} 
 	#else 
-        if(All.NumCurrentTiStep  < 2000 ){
+        if(All.NumCurrentTiStep  < 1500 ){
 		time += All.TimeBetSnapshot;
 	}
-	else if(All.NumCurrentTiStep  >= 2000 && All.NumCurrentTiStep  < 4000 ){
+	else if(All.NumCurrentTiStep  >= 1500 && All.NumCurrentTiStep  < 1900 ){
 		time += All.TimeBetSnapshot/10.0;
 	}
-	else if (All.NumCurrentTiStep  >= 4000) {
-		time += All.TimeBetSnapshot/10.0;
+	else if (All.NumCurrentTiStep  >= 1900) {
+		time += 0.00001;
 	}
 	else {} 
   #endif 
@@ -860,7 +846,7 @@ void create_sink(){
 			P[NumPart -1 - numsinks]   = temp_p;
 			SphP[NumPart-1 - numsinks] = temp_sph;      
 
-			printf("ThisTask = %d, Step: %d moving sink from %d to %d, sink ID: %d, numsinklocal: %d, numsinkstot: %d, N_gas: %d, NumPart: %d\n", ThisTask,All.NumCurrentTiStep, index, NumPart -1 - numsinks, P[NumPart -1 - numsinks].ID, numsinks, numsinkstot, N_gas, NumPart);
+			printf("ThisTask = %d,  moving sink from %d to %d, sink ID: %d, numsinklocal: %d, numsinkstot: %d, N_gas: %d, NumPart: %d\n", ThisTask, index, NumPart -1 - numsinks, P[NumPart -1 - numsinks].ID, numsinks, numsinkstot, N_gas, NumPart);
   	  N_gas--;
 		}
 	} //thistask
@@ -874,7 +860,7 @@ void create_sink(){
 	
 
 //		twohsml = 0.00004;
-		twohsml = 1.5*hsml;
+		twohsml = 1.1*hsml;
 		startnode = All.MaxPart;
 		do{
 			num = ngb_treefind_variable(sp_pos, twohsml, &startnode);
@@ -1004,12 +990,16 @@ void create_sink(){
 
 		header.npart[0] 		= All.TotN_gas;
 		header.npart[4] 		= All.TotN_sink;
-  	AccNumAll += All.TotN_accrete;
+  		AccNumAll += All.TotN_accrete;
 
 		if(ThisTask == thistask){
 			printf("ThisTask: %d, Created sink with %d neigbours within the radius %g,  All.TotN_sink : %d \n", ThisTask, All.TotN_accrete, twohsml, All.TotN_sink);
 		}
-    savepositions(All.SnapshotFileCount++);
+	
+	
+		
+		
+	savepositions(All.SnapshotFileCount++);
 	}	 //issink
 	AccNum=0;
   free(list_sink_posx);
@@ -1021,7 +1011,7 @@ void create_sink(){
   free(local_sink_posz);  
   free(local_sink_ID);      
   
-	MPI_Barrier(MPI_COMM_WORLD); 
+  MPI_Barrier(MPI_COMM_WORLD); 
 
 }
 

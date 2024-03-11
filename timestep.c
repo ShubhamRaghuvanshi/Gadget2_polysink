@@ -589,7 +589,7 @@ int get_timestep(int p,		/*!< particle index */
     {    	
       printf("\nError: A timestep of size zero was assigned on the integer timeline!\n"
 	     "We better stop.\n"
-	     "Task=%d Part-ID=%d Part-Type=%d dt=%g tibase=%g ti_step=%d ac=%g xyz=(%g|%g|%g) tree=(%g|%g%g)\n\n",
+	     "Task=%d Part-ID=%d Part-Type=%d dt=%g tibase=%g ti_step=%d ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
 	     ThisTask, (int) P[p].ID, P[p].Type, dt, All.Timebase_interval, ti_step, ac,
 	     P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1], P[p].GravAccel[2]);
 #ifdef PMGRID
