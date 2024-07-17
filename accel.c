@@ -77,15 +77,14 @@ void compute_accelerations(int mode)
 
 #ifdef SINK
 #ifdef SETSINKBND
-      if(All.TotN_sink > 0 ){
-        MPI_Barrier(MPI_COMM_WORLD);         
-        if(ThisTask == 1) {
-          printf("************** Calling setdens *************\n");  
-        }  
-        setdens();
-        MPI_Barrier(MPI_COMM_WORLD);
-        //endrun(901); 
-     }
+   //   if(All.TotN_sink > 0 ){
+   //     MPI_Barrier(MPI_COMM_WORLD);         
+   //     if(ThisTask == 1) {
+   //       printf("************** Calling setdens *************\n");  
+   //     }  
+   //     setdens();
+   //     MPI_Barrier(MPI_COMM_WORLD); 
+   //  }
 
       for(int igas=0; igas<N_gas; igas++){
         if(isinf(SphP[igas].DhsmlDensityFactor) || isnan(SphP[igas].DhsmlDensityFactor) ){

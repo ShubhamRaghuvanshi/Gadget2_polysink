@@ -23,7 +23,7 @@ void run(void)
   int stopflag = 0;
   char stopfname[200], contfname[200];
   double t0, t1;
-
+  int AccNumTot;
 
   sprintf(stopfname, "%sstop", All.OutputDir);
   sprintf(contfname, "%scont", All.OutputDir);
@@ -31,16 +31,11 @@ void run(void)
 
   do				/* main loop */
     {
-     t0 = second();
+      t0 = second();
 
       #ifdef VARPOLYTROPE
       UpdateGamma();  
       #endif         
-
-//			if(All.NumCurrentTiStep%500 = 0){
-//			 All.TimeBetSnapshot = All.TimeBetSnapshot/2.0; 
-//			}
-
 
       find_next_sync_point_and_drift();	/* find next synchronization point and drift particles to this time.
 					 * If needed, this function will also write an output file
@@ -49,23 +44,28 @@ void run(void)
 
       every_timestep_stuff();	/* write some info to log-files */
 
-
-	
+#ifdef SINK
+  	  if(All.NumCurrentTiStep >= All.CriticalNumstep && SinkFlag ==1) {
+        MPI_Allreduce(&AccNum , &AccNumTot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        if(AccNumTot > 0){
+          if(ThisTask == 0 ){
+            printf("&&&&&&&&&&&&&&&&&&&&&&&&: AccNumTot : %d\n", AccNumTot);
+        }
+        destroy_doomed_particles();
+		    MPI_Barrier(MPI_COMM_WORLD);
+        }
+      }
+#endif
       domain_Decomposition();	/* do domain decomposition if needed */
-
-  
       compute_accelerations(0);  /* compute accelerations for 
                                  * the particles that are to be advanced  
                                  *                                  *                                  */
-
-
 #ifndef SINK
    		if(All.NumCurrentTiStep >=All.CriticalNumstep && All.NumCurrentTiStep%10 == 0 ){
-                        double n_crit_cgs = 1e16, mh =  2.408544e-24;
-                        double rho =  n_crit_cgs * mh/All.UnitDensity_in_cgs;
+        double n_crit_cgs = 1e16, mh =  2.408544e-24;
+        double rho =  n_crit_cgs * mh/All.UnitDensity_in_cgs;
 				for(int i=0; i<N_gas; i++){
 					if( SphP[i].Density > rho){ 
-						SphP[i].Density = rho;
 						printf("Maximum density reached\n")	;			
 						endrun(10945);			
 					}
@@ -73,14 +73,7 @@ void run(void)
   		}
 #endif
 
-
-	//	 if(All.NumCurrentTiStep%1000 ==0 ){cutoff();}
-
-
-	
 #ifdef SINK
-     // only check for accreted particles every 10 timesteps. this is sort of arbitrary.
-     // don't destroy particles as soon as they're marked.
 
       if(All.NumCurrentTiStep >= All.CriticalNumstep && All.NumCurrentTiStep%10 == 0){
         if(SinkFlag == 0 ){
@@ -95,38 +88,17 @@ void run(void)
         MPI_Barrier(MPI_COMM_WORLD);
         }
       }
-        if(SinkFlag == 1 ){
-
-//printf("We are in Sink %d,  %d,  %d", ThisTask, TempTask, SinkFlag);
-     //   if(All.NumCurrentTiStep%100 ==0 ){cutoff();}
- 
-          
-				if(All.NumCurrentTiStep%10 == 0){
-//					MPI_Barrier(MPI_COMM_WORLD);
-					create_sink();
-//					MPI_Barrier(MPI_COMM_WORLD);					
+      if(SinkFlag == 1 ){
+        if(All.NumCurrentTiStep%10 == 0){
+				  create_sink();
 				}  
 
-				if(All.TotN_sink > 0 ){
-				//	All.ExternalPressure =0;	
-//					RemoveParticles();
-		      MPI_Barrier(MPI_COMM_WORLD);
-		      identify_doomed_particles();			
-		//			move_doomed_particles();
-		     	destroy_doomed_particles();
-		      MPI_Barrier(MPI_COMM_WORLD);
+			if(All.TotN_sink > 0 ){
+		    MPI_Barrier(MPI_COMM_WORLD);
+		    identify_doomed_particles();	
+			}
 
-
-				}
-
-//				if(All.TotN_sink > 1 && All.NumCurrentTiStep%100 == 0){
-//					sinkmerger();
-//				}
-
-
-			N_sink = NumPart-N_gas;
-   //   MPI_Barrier(MPI_COMM_WORLD);
-			
+			N_sink = NumPart-N_gas;			
 			if(N_sink > 0){
 				char filename[100];
 				FLOAT sr, sv, sa, L ;
@@ -150,40 +122,25 @@ void run(void)
 				}				
 			}
 
-			
+      //This will cause domain decomposition to be performed next time this loop is iterated
+      //MPI_Allreduce(&AccNum, &AccNumTot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);		
+      if(All.TotN_accrete > 0) All.NumForcesSinceLastDomainDecomp =  All.TotNumPart * All.TreeDomainUpdateFrequency + 1;			 
 
-//			if(All.TotN_sink > 1){
-//				sinkmerger();
-//			}
+			if(ThisTask == 0 ){
+			  TotMassInSinks  = AccNumAll*P[0].Mass; 
+				printf("ThisTask: %d, NumPart:%d, N_gas:%d, All.TimeBetSnapshot :%g, AccNumAll: %d, TotN_gas:%d, TotN_accrete:%d, All.TotN_sink:%d, TotNumPart:%d, TotMassInSinks: %g, AccretionRadius: %g \n", ThisTask, NumPart, N_gas, All.TimeBetSnapshot, AccNumAll, All.TotN_gas,   All.TotN_accrete , All.TotN_sink,  All.TotN_gas+All.TotN_sink, TotMassInSinks, All.AccretionRadius);				
+			}
+      MPI_Barrier(MPI_COMM_WORLD);
+			MPI_Bcast(&TotMassInSinks , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        //This will cause domain decomposition to be performed next time this loop is iterated
-        //MPI_Allreduce(&AccNum, &AccNumTot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);		
-        if(All.TotN_accrete > 0) All.NumForcesSinceLastDomainDecomp =  All.TotNumPart * All.TreeDomainUpdateFrequency + 1;			 
-
-			 if(ThisTask == 0 ){
-					
-					TotMassInSinks  = AccNumAll*P[0].Mass; 
-					
-					printf("ThisTask: %d, NumPart:%d, N_gas:%d, N_sinks:%d, AccNumAll: %d, TotN_gas:%d, TotN_accrete:%d, All.TotN_sink:%d, TotNumPart:%d, TotMassInSinks: %g, AccretionRadius: %g \n", ThisTask, NumPart, N_gas, N_sink, AccNumAll, All.TotN_gas,   All.TotN_accrete , All.TotN_sink,  All.TotN_gas+All.TotN_sink, TotMassInSinks, All.AccretionRadius);				
-			 
-			 }
-       MPI_Barrier(MPI_COMM_WORLD);
-			 MPI_Bcast(&TotMassInSinks , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-					if(TotMassInSinks > 20.0){
-						if(ThisTask == 0 ){
-							printf("ThisTask : %d, Total mass in sinks has reached 50 , you've defeated the final boss \n", ThisTask);	
-							endrun(420);
-						}
-        					}
-
+			if(TotMassInSinks > 50.0){
+			  if(ThisTask == 0 ){
+				  printf("ThisTask : %d, Total mass in sinks has reached 50 , you've defeated the final boss \n", ThisTask);	
+					endrun(420);
+				}
       }
-      
-      
+    }  
 #endif
-
-
- 
 
       /* check whether we want a full energy statistics */
       if((All.Time - All.TimeLastStatistics) >= All.TimeBetStatistics)
@@ -473,32 +430,13 @@ int find_next_outputtime(int ti_curr)
 	  else{
 
 if(All.FixedTimestep == 0){
-	#ifdef SINK
-	if(SinkFlag == 1 ){
-		time += 0.00001;
-	}          
-        else if(All.NumCurrentTiStep  < 1000 ){
-		time += All.TimeBetSnapshot;
-	}
-	else if(All.NumCurrentTiStep  >= 1000 && All.NumCurrentTiStep  < 1900 ){
-		time += All.TimeBetSnapshot/10.0;
-	}
-	else if (All.NumCurrentTiStep  >= 1900) {
-		time += All.TimeBetSnapshot/100.0;
-	}
-	else {} 
-	#else 
-        if(All.NumCurrentTiStep  < 1500 ){
-		time += All.TimeBetSnapshot;
-	}
-	else if(All.NumCurrentTiStep  >= 1500 && All.NumCurrentTiStep  < 1900 ){
-		time += All.TimeBetSnapshot/10.0;
-	}
-	else if (All.NumCurrentTiStep  >= 1900) {
-		time += 0.00001;
-	}
-	else {} 
-  #endif 
+  if(SinkFlag == 0 ){
+    All.TimeBetSnapshot  = 100.0*All.TimeStep;
+  }
+  else{
+    All.TimeBetSnapshot  = 300.0*All.TimeStep; 
+  }
+	time += All.TimeBetSnapshot;   
 	} //not fixed time
 else {time += All.TimeBetSnapshot;}
 
@@ -596,9 +534,10 @@ void every_timestep_stuff(void)
 	}
       else
 	{
-	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Systemstep: %g, hsml: %g, TotNumPart: %d , maxdens: %g , GAMMA: %g, Temp: %g\n", All.NumCurrentTiStep, All.Time,
-		  All.TimeStep, temp_smthl, All.TotNumPart, temp_nrho , temp_gamma, temp_T);
-	  printf("\nBegin Step %d, Time: %g, Systemstep: %g, hsml: %g, TotNumPart: %d , maxdens: %g, GAMMA: %g, Temp: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep, temp_smthl ,All.TotNumPart, temp_nrho , temp_gamma, temp_T);
+	  fprintf(FdInfo, "\nBegin Step %d, Time: %g, Systemstep: %g, TimeBetSnapshot: %g  , hsml: %g, TotNumPart: %d , maxdens: %g , GAMMA: %g, Temp: %g\n", All.NumCurrentTiStep, All.Time,
+		  All.TimeStep, All.TimeBetSnapshot ,temp_smthl, All.TotNumPart, temp_nrho , temp_gamma, temp_T);
+	  printf("\nBegin Step %d, Time: %g, Systemstep: %g, TimeBetSnapshot: %g ,hsml: %g, TotNumPart: %d , maxdens: %g, GAMMA: %g, Temp: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep, 
+    All.TimeBetSnapshot, temp_smthl ,All.TotNumPart, temp_nrho , temp_gamma, temp_T);
 	  fflush(FdInfo);
 	}
 

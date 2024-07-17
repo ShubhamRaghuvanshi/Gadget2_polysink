@@ -189,7 +189,7 @@ void identify_doomed_particles(void)
   FLOAT seperation, vdotr,relvel, relenergy, little_L, KeplerL2, sinkrad, sinkrad3;
   int num, startnode;
   int numsinks, numsinkstot;
-  int notestflag = 0;
+  int notestflag = 1;
 
   FLOAT *local_sink_posx, *local_sink_posy, *local_sink_posz;
   FLOAT *local_sink_velx, *local_sink_vely, *local_sink_velz;
@@ -204,6 +204,7 @@ void identify_doomed_particles(void)
   
   FLOAT *pos, *vel;
   FLOAT Postemp[3], Veltemp[3];
+  int AccNumTot=0;
   
   int verbose = 0;
   if(ThisTask == 0 ){
@@ -345,6 +346,8 @@ void identify_doomed_particles(void)
       if(verbose) printf("%d ",P[i].ID);      	
     }
   } 
+  MPI_Allreduce(&AccNum , &AccNumTot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  if(AccNumTot > 0) All.NumForcesSinceLastDomainDecomp =  All.TotNumPart * All.TreeDomainUpdateFrequency + 1;	
   if(verbose) printf("\n");
   
   //All.TstepLastAcc = All.NumCurrentTiStep;
@@ -626,7 +629,7 @@ int index_compare_key(const void *a, const void *b)
 void UpdateGamma(){
 
   double n1 = 1e3, n2= 1e9, n3=1e10;
-  double gama1= GAMMA, gama2 = 0.94884, gama3 = 1.07958;
+  double gama1= GAMMA, gama2 = 0.9874, gama3 = 1.0363;
 
   double Gnew, Df;
 

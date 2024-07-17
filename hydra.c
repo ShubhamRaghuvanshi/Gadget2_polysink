@@ -455,9 +455,15 @@ void hydro_evaluate(int target, int mode)
   acc[0] = acc[1] = acc[2] = dtEntropy = 0;
   maxSignalVel = 0;
 
-  //#ifdef SINK
+  #ifdef SINK
   //  if( All.TotN_sink == 0 || ( All.TotN_sink > 0 && nbnd == 0 )) {
-  //#endif 
+  if( pos[0]*pos[0] + pos[1]*pos[1] + pos[2]*pos[2] < 0.1*0.1  ){
+    All.ExternalPressure  =0;
+  } 
+  else {
+    All.ExternalPressure  = 533.0941;
+  } 
+  #endif 
 
   p_over_rho2_i =   (pressure - All.ExternalPressure )/(rho * rho) * dhsmlDensityFactor;
   h_i2 = h_i * h_i;

@@ -49,7 +49,7 @@ ETA_MINUS1   =  (1.0/CV);
 
 
 #ifdef VARPOLYTROPE
-GAMMA        =  (1.11126);     /*!< index for isothermal gas */
+GAMMA        =  (1.1362);     /*!< index for isothermal gas */
 GAMMA_MINUS1 =  (GAMMA-1);
 CV           =  (5.0/2.0);
 ETA_MINUS1   =  (1.0/CV);

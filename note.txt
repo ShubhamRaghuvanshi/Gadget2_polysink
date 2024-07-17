@@ -1,0 +1,11 @@
+sink got thrown out
+
+(a) Relevant functions 
+
+(1) advance_and_find_timesteps
+(2) find_next_sync_point_and_drift
+(3) compute_accelerations
+
+(b) update position 
+
+
